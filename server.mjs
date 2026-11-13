@@ -11,7 +11,16 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const MUSIC_DIR = path.join(ROOT, 'music');
-const PUBLIC_DIR = path.join(ROOT, 'public');
+const PUBLIC_DIR = ROOT;
+const BLOCKED_PATHS = new Set([
+  '/server.mjs',
+  '/package.json',
+  '/README.md',
+  '/.gitignore',
+  '/.nojekyll',
+  '/CNAME',
+]);
+const BLOCKED_PREFIXES = ['/.git/', '/.github/', '/tools/'];
 const PORT = Number(process.env.DARKWAVES_PORT || 4321);
 const HOST = process.env.DARKWAVES_HOST || '127.0.0.1';
 
@@ -237,7 +246,13 @@ const server = http.createServer((req, res) => {
     return streamTrack(req, res, track);
   }
 
+  if (pathname === '/music/tracks.json') {
+    return serveStatic(req, res, path.join(MUSIC_DIR, 'tracks.json'));
+  }
   if (pathname === '/music' || pathname.startsWith('/music/')) {
+    return sendText(res, 404, 'No disponible');
+  }
+  if (BLOCKED_PATHS.has(pathname) || BLOCKED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
     return sendText(res, 404, 'No disponible');
   }
 

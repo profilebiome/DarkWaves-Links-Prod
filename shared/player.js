@@ -119,10 +119,30 @@ export class Player extends EventTarget {
   }
 
   async load() {
-    const response = await fetch("/api/tracks", { cache: "no-store" });
-    if (!response.ok) throw new Error("No se pudo leer la carpeta de música.");
-    const data = await response.json();
-    this.tracks = Array.isArray(data.tracks) ? data.tracks : [];
+    let data;
+    try {
+      // Modo local: el servidor lee la carpeta music/ y firma cada pista.
+      const response = await fetch("/api/tracks", { cache: "no-store" });
+      if (!response.ok) throw new Error("sin-api");
+      data = await response.json();
+    } catch {
+      // Modo estático (GitHub Pages): playlist generada en music/tracks.json.
+      const response = await fetch("music/tracks.json", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("No hay playlist. Agrega tus temas a la carpeta music/.");
+      }
+      data = await response.json();
+    }
+
+    const list = Array.isArray(data.tracks) ? data.tracks : [];
+    this.tracks = list
+      .filter((track) => track && (track.file || track.url))
+      .map((track) => ({
+        ...track,
+        id: track.id || track.file,
+        url: track.url || `music/${encodeURIComponent(track.file)}`,
+      }));
+
     if (this.tracks.length && this.index < 0) this.index = 0;
     if (this.index >= this.tracks.length) this.index = this.tracks.length ? 0 : -1;
     this.dispatchEvent(new CustomEvent("tracks", { detail: { tracks: this.tracks } }));

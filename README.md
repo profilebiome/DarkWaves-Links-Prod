@@ -1,8 +1,23 @@
 # DarkWaves — Console
 
-Reproductor musical local en negro y azul oscuro. Lees tu propia carpeta `music/`, la web genera la playlist sola y reproduce en streaming, sin exponer los archivos para descarga directa.
+Reproductor musical en negro y azul oscuro. Funciona de dos formas con el mismo código:
 
-## Uso
+- **GitHub Pages** (público, sin servidor): lee la playlist de `music/tracks.json` y sirve el audio desde `music/`.
+- **Local** (privado): un servidor Node lee tu carpeta `music/` y transmite cada pista con enlace firmado.
+
+## Añadir música
+
+Copia tus archivos a `music/` (MP3, WAV, FLAC, M4A, AAC, OGG, OPUS o WEBM) y actualiza la playlist:
+
+```bash
+npm run manifest
+```
+
+Si subes la música directamente desde GitHub, la acción **Actualizar playlist** regenera `music/tracks.json` sola al hacer push. No tienes que tocar el JSON a mano.
+
+Si nombras los archivos como `Artista - Título.mp3`, se separan artista y título automáticamente.
+
+## Uso local
 
 Requiere Node.js 18 o superior. No tiene dependencias: no hace falta `npm install`.
 
@@ -10,33 +25,30 @@ Requiere Node.js 18 o superior. No tiene dependencias: no hace falta `npm instal
 npm run dev
 ```
 
-Abre http://localhost:4321 y copia tus temas a la carpeta `music/`. La lista se actualiza al recargar.
+Abre http://localhost:4321. En este modo `/music` no se sirve y el audio sale en streaming por enlaces firmados que caducan.
 
-Formatos: MP3, WAV, FLAC, M4A, AAC, OGG, OPUS y WEBM.
+## Publicar en GitHub Pages
 
-Si nombras los archivos como `Artista - Título.mp3`, se separan artista y título automáticamente.
+El sitio se sirve desde la raíz de la rama `main`:
+
+1. `index.html` en la raíz (no dentro de una subcarpeta).
+2. `.nojekyll` para desactivar Jekyll.
+3. `CNAME` con tu dominio (`musiclinks.profilebio.me`).
+4. Settings → Pages → Deploy from a branch → `main` / `(root)`.
+
+Con eso la portada ya no muestra el README: carga el reproductor.
+
+## Límite importante
+
+En GitHub Pages todos los archivos del repositorio son públicos: cualquiera puede abrir la URL del MP3. **No es posible impedir la descarga en hosting estático**, solo se puede ocultar el enlace en la interfaz. Si la prioridad es que nadie acceda al archivo original, hace falta hosting con backend y almacenamiento privado.
 
 ## Estructura
 
 ```
-server.mjs          servidor local (API + streaming)
-public/index.html   reproductor
-public/shared/      motor de audio y estilos base
-music/              tus archivos (no se suben a GitHub)
-```
-
-## Privacidad
-
-- `/music` no se sirve y los archivos no se listan por URL directa.
-- Cada pista usa un enlace firmado que caduca.
-- El audio se entrega en streaming (`206` con `Range`), sin `Content-Disposition: attachment`.
-
-Ningún reproductor web puede impedir al 100 % que alguien capture el audio que suena; esto protege el archivo original y la descarga directa.
-
-## Puerto
-
-Por defecto `4321`. Puedes cambiarlo con `DARKWAVES_PORT`:
-
-```bash
-DARKWAVES_PORT=5000 npm run dev
+index.html              reproductor
+shared/                 motor de audio y estilos
+music/                  tus pistas + tracks.json
+tools/build-manifest.mjs   genera la playlist
+server.mjs              servidor local opcional
+.github/workflows/      actualiza la playlist al subir música
 ```

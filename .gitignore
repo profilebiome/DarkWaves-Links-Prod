@@ -3,9 +3,5 @@ node_modules/
 *.log
 .freebuff/
 
-# Tu música no se sube al repositorio; la carpeta queda gracias a .gitkeep
-music/*
-!music/.gitkeep
-
 .DS_Store
 Thumbs.db
