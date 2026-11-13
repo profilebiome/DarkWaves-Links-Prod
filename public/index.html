@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DarkWaves — Reproductor musical</title>
+<meta name="description" content="Reproductor musical local: copia tus temas a music/ y escúchalos en streaming, sin descargas.">
+<meta name="theme-color" content="#04060c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237dd3fc' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M9 18V6.4l10-2v11.2'/%3E%3Ccircle cx='6.5' cy='18' r='2.5'/%3E%3Ccircle cx='16.5' cy='15.6' r='2.5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/base.css">
+<style>
+  :root {
+    --bg: #04060c;
+    --panel: #060d19;
+    --line: rgba(120, 165, 235, 0.16);
+    --blue: #2f6feb;
+    --cyan: #8bd4ff;
+    --text: #eef4ff;
+    --muted: #7d92b2;
+    --mono: "Consolas", "SFMono-Regular", ui-monospace, monospace;
+  }
+
+  body {
+    min-height: 100vh;
+    background:
+      linear-gradient(90deg, rgba(96, 165, 250, 0.05) 1px, transparent 1px) 0 0 / 25% 100%,
+      radial-gradient(900px 620px at 90% 0%, rgba(23, 55, 120, 0.4), transparent 65%),
+      var(--bg);
+  }
+
+  .shell {
+    max-width: 1440px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 38px 26px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #eaf3ff;
+    letter-spacing: 0.26em;
+    font-weight: 700;
+  }
+  .logo svg { width: 18px; height: 18px; color: #8bd4ff; }
+  header nav { margin-left: auto; display: flex; gap: 16px; align-items: center; }
+  header .slot {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 10px;
+    border: 1px solid rgba(139, 212, 255, 0.25);
+    color: #a5dcff;
+  }
+  header .slot i {
+    width: 4px; height: 4px;
+    background: #8bd4ff;
+    box-shadow: 0 0 8px #8bd4ff;
+    border-radius: 50%;
+  }
+
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+    gap: 0;
+    padding: 18px 0 0;
+    min-height: 0;
+  }
+
+  .left {
+    display: flex;
+    flex-direction: column;
+    padding-right: 36px;
+    min-width: 0;
+  }
+
+  .index-row {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #6a82a3;
+  }
+  .index-row .big {
+    font-size: clamp(44px, 6vw, 72px);
+    line-height: 0.8;
+    letter-spacing: -0.04em;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(130, 180, 255, 0.45);
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-weight: 300;
+  }
+
+  .title-block { margin-top: 22px; }
+  .title-block h1 {
+    margin: 0;
+    font-size: clamp(36px, 5.4vw, 72px);
+    font-weight: 600;
+    line-height: 0.94;
+    letter-spacing: -0.05em;
+    color: #f4f8ff;
+    text-wrap: balance;
+  }
+  .title-block .artist {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 18px 0 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: #92a9c8;
+  }
+  .title-block .artist::before {
+    content: "";
+    width: 34px; height: 1px;
+    background: linear-gradient(90deg, #2f6feb, transparent);
+  }
+
+  .wave {
+    position: relative;
+    margin: auto 0 0;
+    padding: 26px 0 12px;
+  }
+  .wave canvas {
+    width: 100%;
+    height: 128px;
+    display: block;
+    cursor: pointer;
+  }
+  .wave .legend {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
+    color: #607595;
+    text-transform: uppercase;
+    padding-top: 6px;
+  }
+
+  .times {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #8fa6c6;
+    font-variant-numeric: tabular-nums;
+    padding-top: 8px;
+  }
+  .times span { width: 40px; flex: none; }
+  .times span:last-child { text-align: right; }
+  .times input { flex: 1; height: 16px; }
+  .times input[type="range"]::-webkit-slider-runnable-track {
+    height: 1px;
+    background: linear-gradient(90deg, #7cc6ff calc(var(--p, 0) * 1%), rgba(120, 165, 235, 0.2) calc(var(--p, 0) * 1%));
+  }
+  .times input[type="range"]::-moz-range-track {
+    height: 1px;
+    background: linear-gradient(90deg, #7cc6ff calc(var(--p, 0) * 1%), rgba(120, 165, 235, 0.2) calc(var(--p, 0) * 1%));
+  }
+  .times input[type="range"]::-webkit-slider-thumb { width: 8px; height: 8px; margin-top: -3.5px; }
+
+  .transport {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 0 4px;
+    border-top: 1px solid var(--line);
+    margin-top: 12px;
+  }
+  .btn {
+    display: grid;
+    place-items: center;
+    width: 44px; height: 44px;
+    border: 1px solid var(--line);
+    color: #a3bad8;
+    transition: all 0.18s ease;
+  }
+  .btn svg { width: 18px; height: 18px; }
+  .btn:hover { color: #fff; border-color: rgba(120, 180, 255, 0.5); background: rgba(25, 55, 110, 0.3); }
+  .btn.active { color: #8bd4ff; border-color: rgba(139, 212, 255, 0.5); background: rgba(8, 47, 73, 0.3); }
+
+  .main-play {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    height: 44px;
+    padding: 0 22px;
+    margin-left: 6px;
+    color: #eef7ff;
+    background: #2f6feb;
+    border: 1px solid rgba(160, 210, 255, 0.35);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    transition: background 0.18s ease;
+  }
+  .main-play:hover { background: #3c7df7; }
+  .main-play svg { width: 16px; height: 16px; }
+
+  .vol {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    color: #7f95b4;
+  }
+  .vol svg { width: 14px; height: 14px; }
+  .vol input { width: 86px; height: 16px; }
+
+  .meta-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-top: 1px solid var(--line);
+    margin-top: 18px;
+  }
+  .meta-strip div {
+    padding: 12px 14px 0 0;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #5f7595;
+  }
+  .meta-strip span {
+    display: block;
+    margin-top: 5px;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 12.5px;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    color: #cfe0f5;
+  }
+
+  /* ---------- Right : library ---------- */
+  .right {
+    border-left: 1px solid var(--line);
+    padding-left: 30px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .right-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .right-head h2 {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: #b9cde6;
+    font-family: var(--mono);
+  }
+  .right-head .n {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: #647c9e;
+    letter-spacing: 0.12em;
+  }
+  .right-head .bar {
+    width: 3px; height: 16px;
+    background: linear-gradient(180deg, #8bd4ff, #2f6feb);
+  }
+
+  .filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(120, 165, 235, 0.09);
+    color: #6b83a4;
+  }
+  .filter svg { width: 14px; height: 14px; }
+  .filter input {
+    flex: 1;
+    border: 0;
+    background: none;
+    outline: none;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  .filter input::placeholder { color: #5c7292; text-transform: uppercase; font-size: 9.5px; letter-spacing: 0.14em; }
+
+  .list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 6px 8px 0;
+    max-height: min(62vh, 560px);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(96, 165, 250, 0.3) transparent;
+  }
+  .list::-webkit-scrollbar { width: 6px; }
+  .list::-webkit-scrollbar-thumb { background: rgba(96, 165, 250, 0.28); }
+
+  .item {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 10px;
+    text-align: left;
+    border-bottom: 1px solid rgba(120, 165, 235, 0.07);
+    position: relative;
+    transition: background 0.16s ease, padding-left 0.16s ease;
+  }
+  .item:hover { background: rgba(29, 64, 122, 0.18); padding-left: 14px; }
+  .item.active { background: linear-gradient(90deg, rgba(47, 111, 235, 0.18), transparent); }
+  .item.active::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: #8bd4ff;
+    box-shadow: 0 0 12px #8bd4ff;
+  }
+  .item .i {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #5c7292;
+    font-variant-numeric: tabular-nums;
+  }
+  .item.active .i { color: #8bd4ff; }
+  .item .txt { min-width: 0; }
+  .item .txt strong {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .item .txt small {
+    display: block;
+    margin-top: 3px;
+    font-size: 10.5px;
+    color: #7e94b4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .item .i-ext {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 0.1em;
+    color: #6a82a3;
+    padding: 3px 5px;
+    border: 1px solid rgba(120, 165, 235, 0.16);
+  }
+  .item.active .i-ext { color: #9ddcff; border-color: rgba(139, 212, 255, 0.4); }
+
+  .list-empty {
+    padding: 34px 16px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    line-height: 2;
+    color: #6d84a4;
+    letter-spacing: 0.04em;
+  }
+  .list-empty code { color: #a9dcff; }
+
+  .right-foot {
+    border-top: 1px solid var(--line);
+    padding-top: 12px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #5b7090;
+  }
+
+  @media (max-width: 1080px) {
+    main { grid-template-columns: 1fr; }
+    .left { padding-right: 0; }
+    .right {
+      border-left: 0;
+      border-top: 1px solid var(--line);
+      padding: 18px 0 0;
+      margin-top: 22px;
+    }
+    .list { max-height: 320px; }
+    .wave canvas { height: 92px; }
+    .meta-strip { grid-template-columns: repeat(2, 1fr); gap: 4px 0; }
+  }
+  @media (max-width: 640px) {
+    .shell { padding: 16px 16px 20px; }
+    header { font-size: 9px; flex-wrap: wrap; gap: 10px; }
+    .title-block h1 { font-size: 40px; }
+    .transport { flex-wrap: wrap; gap: 8px; }
+    .vol { margin-left: 0; width: 100%; }
+    .vol input { flex: 1; }
+    .btn { width: 40px; height: 40px; }
+    .main-play { margin-left: 0; }
+    .meta-strip div { padding-right: 8px; }
+    .wave canvas { height: 78px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <span class="logo"><span data-icon="music"></span>DARKWAVES</span>
+    <span style="color:#3b5273">/</span>
+    <span>CONSOLE</span>
+    <nav>
+      <span class="slot"><i></i>music/</span>
+    </nav>
+  </header>
+
+  <main>
+    <section class="left">
+      <div class="index-row">
+        <span class="big" id="index">00</span>
+        <span>Pista actual / <span id="total">00</span></span>
+        <span style="margin-left:auto" id="format">—</span>
+      </div>
+
+      <div class="title-block">
+        <h1 id="title">Carga tu música</h1>
+        <p class="artist" id="artist">Copia tus archivos a la carpeta music/</p>
+      </div>
+
+      <div class="wave">
+        <canvas id="wave" aria-label="Progreso de la pista"></canvas>
+        <div class="legend"><span>Waveform</span><span id="wave-state">Pausado</span></div>
+      </div>
+
+      <div class="times">
+        <span id="current">0:00</span>
+        <input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Progreso">
+        <span id="duration">0:00</span>
+      </div>
+
+      <div class="transport">
+        <button id="shuffle" class="btn" title="Aleatorio" aria-label="Aleatorio" data-icon="shuffle"></button>
+        <button id="prev" class="btn" title="Anterior" aria-label="Anterior" data-icon="prev"></button>
+        <button id="play" class="main-play" aria-label="Reproducir">
+          <span data-icon="play" style="display:grid;place-items:center"></span><span id="play-label">Reproducir</span>
+        </button>
+        <button id="next" class="btn" title="Siguiente" aria-label="Siguiente" data-icon="next"></button>
+        <button id="repeat" class="btn" title="Repetir" aria-label="Repetir" data-icon="repeat"></button>
+        <span class="vol">
+          <span data-icon="volume"></span>
+          <input id="volume" type="range" min="0" max="100" value="85" aria-label="Volumen">
+        </span>
+      </div>
+
+      <div class="meta-strip">
+        <div>Título<span id="m-title">—</span></div>
+        <div>Artista<span id="m-artist">—</span></div>
+        <div>Formato<span id="m-format">—</span></div>
+        <div>Modo<span id="m-mode">Normal</span></div>
+      </div>
+    </section>
+
+    <section class="right">
+      <div class="right-head">
+        <span class="bar"></span>
+        <h2>Biblioteca local</h2>
+        <span class="n" id="count">00 pistas</span>
+      </div>
+      <label class="filter">
+        <span data-icon="search"></span>
+        <input id="search" type="search" placeholder="Filtrar por título o artista" autocomplete="off">
+      </label>
+      <div class="list" id="list"></div>
+      <div class="list-empty" id="list-empty" hidden>
+        // sin pistas detectadas<br>
+        &gt; copia archivos a <code>music/</code><br>
+        &gt; recarga esta página
+      </div>
+      <div class="right-foot">
+        <span>Solo escucha · sin descarga</span>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script type="module">
+  import {
+    Player, mountIcons, icons, formatTime, artFor, initialsOf, hotkeys, escapeHtml,
+  } from "/shared/player.js";
+
+  mountIcons();
+  const player = new Player();
+  hotkeys(player);
+
+  const $ = (sel) => document.querySelector(sel);
+  const el = {
+    index: $("#index"), total: $("#total"), format: $("#format"), title: $("#title"),
+    artist: $("#artist"), wave: $("#wave"), waveState: $("#wave-state"),
+    current: $("#current"), duration: $("#duration"), seek: $("#seek"),
+    play: $("#play"), playLabel: $("#play-label"), prev: $("#prev"), next: $("#next"),
+    shuffle: $("#shuffle"), repeat: $("#repeat"), volume: $("#volume"),
+    list: $("#list"), count: $("#count"), empty: $("#list-empty"), search: $("#search"),
+    mTitle: $("#m-title"), mArtist: $("#m-artist"), mFormat: $("#m-format"), mMode: $("#m-mode"),
+  };
+
+  let query = "";
+  let waveValues = [];
+  let progress = 0;
+
+  function seededValues(seed, count) {
+    let h = 2166136261;
+    for (let i = 0; i < seed.length; i += 1) {
+      h ^= seed.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    const rand = () => {
+      h += 0x6d2b79f5;
+      let t = h;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    return Array.from({ length: count }, (_, i) => {
+      const envelope = 0.35 + 0.65 * Math.sin((Math.PI * (i + 1)) / (count + 1)) ** 0.55;
+      return Math.max(0.08, Math.min(1, (0.22 + rand() * 0.95) * envelope));
+    });
+  }
+
+  function drawWave() {
+    const canvas = el.wave;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const count = waveValues.length || 96;
+    const gap = 2 * dpr;
+    const barWidth = (canvas.width - gap * (count - 1)) / count;
+    const played = progress * canvas.width;
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+    gradient.addColorStop(0, "rgba(120, 190, 255, 0.95)");
+    gradient.addColorStop(1, "rgba(143, 212, 255, 0.95)");
+
+    for (let i = 0; i < count; i += 1) {
+      const value = waveValues[i] || 0.3;
+      const h = Math.max(2 * dpr, value * (canvas.height - 8 * dpr));
+      const x = i * (barWidth + gap);
+      const y = (canvas.height - h) / 2;
+      ctx.fillStyle = x < played ? gradient : "rgba(96, 140, 210, 0.22)";
+      ctx.fillRect(x, y, Math.max(barWidth, 1), h);
+    }
+
+    ctx.fillStyle = "rgba(180, 225, 255, 0.75)";
+    ctx.fillRect(Math.min(played, canvas.width - 1), 0, 1, canvas.height);
+  }
+
+  const observer = new ResizeObserver(drawWave);
+  observer.observe(el.wave);
+
+  function newWave(track) {
+    waveValues = seededValues(`${track.title}|${track.artist}`, 108);
+    progress = 0;
+    drawWave();
+  }
+
+  function render() {
+    const rows = player.tracks
+      .map((track, index) => ({ ...track, index }))
+      .filter((track) => `${track.title} ${track.artist}`.toLowerCase().includes(query));
+
+    el.list.innerHTML = rows
+      .map((track) => {
+        const active = track.index === player.index;
+        return `<button class="item${active ? " active" : ""}" data-index="${track.index}">
+          <span class="i">${active ? ">>" : String(track.index + 1).padStart(2, "0")}</span>
+          <span class="txt"><strong>${escapeHtml(track.title)}</strong><small>${escapeHtml(track.artist)}</small></span>
+          <span class="i-ext">${escapeHtml(String(track.ext || "").toUpperCase())}</span>
+        </button>`;
+      })
+      .join("");
+
+    el.count.textContent = `${String(player.tracks.length).padStart(2, "0")} pistas`;
+    el.total.textContent = String(player.tracks.length).padStart(2, "0");
+    el.empty.hidden = player.tracks.length > 0;
+  }
+
+  function paintTrack(track) {
+    if (!track) return;
+    el.index.textContent = String(player.index + 1).padStart(2, "0");
+    el.title.textContent = track.title;
+    el.artist.textContent = track.artist;
+    el.format.textContent = String(track.ext || "audio").toUpperCase();
+    el.mTitle.textContent = track.title;
+    el.mArtist.textContent = track.artist;
+    el.mFormat.textContent = String(track.ext || "audio").toUpperCase();
+    newWave(track);
+    render();
+  }
+
+  function paintTime(current, duration) {
+    el.current.textContent = formatTime(current);
+    el.duration.textContent = formatTime(duration);
+    progress = duration ? current / duration : 0;
+    el.seek.value = String(Math.round(progress * 1000));
+    el.seek.style.setProperty("--p", (progress * 100).toFixed(2));
+    drawWave();
+  }
+
+  function paintToggles() {
+    el.shuffle.classList.toggle("active", player.shuffle);
+    el.repeat.classList.toggle("active", player.repeat !== "off");
+    el.mMode.textContent =
+      [player.shuffle ? "Aleatorio" : "", player.repeat === "one" ? "Repetir 1" : player.repeat === "all" ? "Repetir todo" : ""]
+        .filter(Boolean).join(" · ") || "Normal";
+  }
+
+  el.wave.addEventListener("click", (event) => {
+    const rect = el.wave.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    player.seek(ratio * player.duration());
+  });
+
+  el.list.addEventListener("click", (event) => {
+    const item = event.target.closest(".item");
+    if (!item) return;
+    const index = Number(item.dataset.index);
+    if (index === player.index && player.audio.src) player.toggle();
+    else player.playIndex(index);
+  });
+
+  el.search.addEventListener("input", () => {
+    query = el.search.value.trim().toLowerCase();
+    render();
+  });
+
+  el.play.addEventListener("click", () => {
+    if (!player.tracks.length) return;
+    if (!player.audio.src) player.playIndex(Math.max(player.index, 0));
+    else player.toggle();
+  });
+  el.prev.addEventListener("click", () => player.prev());
+  el.next.addEventListener("click", () => player.next());
+  el.seek.addEventListener("input", () => player.seek((Number(el.seek.value) / 1000) * player.duration()));
+  el.volume.addEventListener("input", () => player.setVolume(Number(el.volume.value) / 100));
+  el.shuffle.addEventListener("click", () => { player.shuffle = !player.shuffle; paintToggles(); });
+  el.repeat.addEventListener("click", () => {
+    player.repeat = player.repeat === "off" ? "all" : player.repeat === "all" ? "one" : "off";
+    paintToggles();
+  });
+
+  player.addEventListener("tracks", render);
+  player.addEventListener("trackchange", (event) => {
+    paintTrack(event.detail.track);
+    paintTime(0, 0);
+  });
+  player.addEventListener("time", (event) => paintTime(event.detail.current, event.detail.duration));
+  player.addEventListener("meta", (event) => paintTime(player.audio.currentTime, event.detail.duration));
+  player.addEventListener("state", (event) => {
+    const { playing } = event.detail;
+    el.play.innerHTML = `<span style="display:grid;place-items:center">${icons[playing ? "pause" : "play"]}</span><span id="play-label">${playing ? "Pausar" : "Reproducir"}</span>`;
+    el.play.setAttribute("aria-label", playing ? "Pausar" : "Reproducir");
+    el.waveState.textContent = playing ? "Reproduciendo" : "Pausado";
+  });
+  player.addEventListener("volume", (event) => {
+    el.volume.value = String(Math.round(event.detail.volume * 100));
+  });
+
+  el.volume.value = String(Math.round(player.audio.volume * 100));
+  paintToggles();
+  waveValues = seededValues("darkwaves", 108);
+  drawWave();
+
+  try {
+    await player.load();
+    if (player.current) paintTrack(player.current);
+    render();
+  } catch (error) {
+    el.empty.hidden = false;
+    el.empty.innerHTML = `${escapeHtml(error.message)}<br>&gt; revisa que el servidor esté activo`;
+  }
+</script>
+</body>
+</html>

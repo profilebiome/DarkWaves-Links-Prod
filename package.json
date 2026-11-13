@@ -1,0 +1,14 @@
+{
+  "name": "darkwaves-console",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Reproductor musical local en negro y azul oscuro con streaming protegido",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
