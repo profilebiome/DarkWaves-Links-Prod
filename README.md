@@ -64,28 +64,96 @@ confianza: el login viaja en texto plano sin TLS.
 
 ## Protección anti-captura
 
-La página bloquea clic derecho, arrastre, copia, `Ctrl/Cmd+S`, `Ctrl/Cmd+P`,
-`PrintScreen` (vacía el portapapeles), `F12` y las herramientas de desarrollo, y
-oculta el documento al imprimir. Son disuasores: **ningún navegador puede impedir
-realmente una captura de pantalla o una grabación**, porque el sistema operativo
-captura píxeles sin consultar a la página. Tampoco existe forma de bloquear
-`getDisplayMedia` desde la web. Para una protección real del audio hace falta DRM
-(Widevine/FairPlay), que este proyecto no implementa.
+`shared/protect.js` aplica cuatro capas, todas de disuasión:
 
-## Publicar en GitHub Pages
+1. **Copia directa:** bloquea clic derecho, arrastre, copia, `Ctrl/Cmd+S`,
+   `Ctrl/Cmd+P`, `PrintScreen` (vacía el portapapeles), `F12` y las herramientas
+   de desarrollo, y oculta el documento al imprimir.
+2. **APIs de captura dentro de la página:** `getDisplayMedia` (compartir pantalla),
+   `captureStream` del audio y picture-in-picture quedan deshabilitados, así que
+   una extensión o un script en la propia página no puede grabar el audio.
+3. **Pestaña oculta o ventana sin foco:** pausa el audio, tapa el contenido con un
+   aviso y lo restaura al volver. Es el instante en que se abre el grabador o se
+   cambia de aplicación.
+4. **Marca de agua:** dominio, usuario (si está logueado) y hora, cada 30 s. No
+   impide grabar, pero identifica la sesión si la grabación se filtra.
+
+**Límite real:** ningún navegador puede impedir una captura o una grabación. El
+sistema operativo captura píxeles sin consultar a la página: Win+PrtScn, Recortes,
+Cmd+Shift+5, OBS, Game Bar, una capturadora HDMI o el grabador nativo de Android e
+iOS (que además no dispara ningún evento, así que es indetectable). Una cámara
+apuntando al monitor no se puede bloquear de ninguna manera. Para una protección
+de salida real hace falta DRM (Widevine/FairPlay con HDCP), que este proyecto no
+implementa y que tampoco detiene una cámara.
+
+## Publicar en GitHub Pages (solo reproductor, sin backend)
 
 El sitio se sirve desde la raíz de la rama `main`:
 
 1. `index.html` en la raíz (no dentro de una subcarpeta).
 2. `.nojekyll` para desactivar Jekyll.
-3. `CNAME` con tu dominio (`musiclinks.profilebio.me`).
+3. `CNAME` con el dominio de Pages (`josspreview.profilebio.me`).
 4. Settings → Pages → Deploy from a branch → `main` / `(root)`.
 
 Con eso la portada ya no muestra el README: carga el reproductor.
 
+## Publicar con backend (usuarios, panel y contraseñas de verdad)
+
+GitHub Pages no ejecuta `server.mjs`: allí `/api/*` responde 404, el login no
+funciona y las contraseñas por pista no se aplican. Para que el panel, las cuentas
+y las claves de pista funcionen, el sitio tiene que correr en un host con Node y
+un disco persistente.
+
+### Render (Blueprint incluido)
+
+1. Dashboard → **New → Blueprint** → elige este repositorio. Render lee
+   `render.yaml` y crea el servicio con su disco de 5 GB en `/var/data`.
+2. Define las variables que pide (`sync: false`): `DARKWAVES_ADMIN_USER` y
+   `DARKWAVES_ADMIN_PASSWORD`. Solo se usan la primera vez, cuando `data/` está
+   vacío; después se cambia la clave en `/admin` → *Seguridad*.
+3. Apunta el dominio: en el servicio → *Custom Domains* agrega
+   `josspreview.profilebio.me` y crea en tu DNS el CNAME que te indique Render.
+4. Si ese dominio sigue apuntando a GitHub Pages, primero quita el dominio en
+   Settings → Pages para que no peleen por el mismo CNAME.
+
+El disco requiere una instancia de pago (Starter). Sin disco el sitio funciona,
+pero pierde en cada reinicio las subidas, las cuentas y las sesiones.
+
+### Docker (Railway, Fly.io, VPS)
+
+```bash
+docker build -t darkwaves .
+docker run -d -p 4321:4321 -v darkwaves-data:/var/data \
+  -e NODE_ENV=production -e DARKWAVES_PUBLIC_URL=https://tu-dominio \
+  -e DARKWAVES_ADMIN_USER=admin -e DARKWAVES_ADMIN_PASSWORD='algo-largo' \
+  darkwaves
+```
+
+Variables que entiende el servidor:
+
+| Variable | Para qué |
+| --- | --- |
+| `PORT` | Puerto del host (Render/Railway lo inyectan). También `DARKWAVES_PORT`. |
+| `DARKWAVES_HOST` | Interfaz de escucha. Por defecto `0.0.0.0` con `NODE_ENV=production`. |
+| `DARKWAVES_DATA_DIR` | Carpeta de `users.json`, `tracks.json`, `sessions.json` (disco). |
+| `DARKWAVES_MUSIC_DIR` | Carpeta de audio (disco). Si está vacía se copia la del repo. |
+| `DARKWAVES_SECURE_COOKIES` | `1`/`0` para forzar cookies `Secure`. Por defecto activas en producción. |
+| `DARKWAVES_PUBLIC_URL` | Solo para los mensajes del arranque. |
+| `DARKWAVES_ADMIN_USER` / `DARKWAVES_ADMIN_PASSWORD` | Cuenta principal en el primer arranque. |
+
+`GET /healthz` responde `{"ok":true}` para el chequeo del host.
+
+### Después del primer despliegue
+
+1. Entra a `/admin` con la cuenta principal y cambia la contraseña.
+2. Crea las cuentas de *Usuarios del panel* que necesites.
+3. **Asigna contraseña a cada pista:** las pistas que ya existían antes del panel
+   no tienen clave y quedan bloqueadas (`hasPassword: false`). En *Biblioteca* →
+   editar → *Nueva contraseña* se arregla.
+
 ## Límite importante
 
-En GitHub Pages todos los archivos del repositorio son públicos: cualquiera puede abrir la URL del MP3. **No es posible impedir la descarga en hosting estático**, solo se puede ocultar el enlace en la interfaz, y las contraseñas por pista del panel **no se aplican** en ese modo. Si la prioridad es que nadie acceda al archivo original, hace falta el servidor con backend (`npm run dev`) desplegado en un hosting con Node y almacenamiento privado.
+En GitHub Pages todos los archivos del repositorio son públicos: cualquiera puede abrir la URL del MP3. **No es posible impedir la descarga en hosting estático**, solo se puede ocultar el enlace en la interfaz, y las contraseñas por pista del panel **no se aplican** en ese modo. Con el backend desplegado, el audio sale por `/stream/<id>?t=<firma>` con enlace firmado que caduca a las 6 h y `music/` nunca se sirve directo.
 
 ## Estructura
 

@@ -14,11 +14,14 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const MUSIC_DIR = path.join(ROOT, 'music');
-const DATA_DIR = path.join(ROOT, 'data');
+const BUNDLED_MUSIC_DIR = path.join(ROOT, 'music');
+/* En un host con disco persistente, music/ y data/ se montan fuera del repo. */
+const MUSIC_DIR = path.resolve(process.env.DARKWAVES_MUSIC_DIR || BUNDLED_MUSIC_DIR);
+const DATA_DIR = path.resolve(process.env.DARKWAVES_DATA_DIR || path.join(ROOT, 'data'));
 const ADMIN_FILE = path.join(DATA_DIR, 'admin.json');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const META_FILE = path.join(DATA_DIR, 'tracks.json');
+const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 const PUBLIC_DIR = ROOT;
 
 const BLOCKED_PATHS = new Set([
@@ -32,8 +35,13 @@ const BLOCKED_PATHS = new Set([
 ]);
 const BLOCKED_PREFIXES = ['/.git/', '/.github/', '/tools/', '/data/', '/node_modules/', '/.freebuff/'];
 
-const PORT = Number(process.env.DARKWAVES_PORT || 4321);
-const HOST = process.env.DARKWAVES_HOST || '127.0.0.1';
+/* Hosts como Render/Railway inyectan PORT y esperan 0.0.0.0. */
+const PORT = Number(process.env.PORT || process.env.DARKWAVES_PORT || 4321);
+const HOST = process.env.DARKWAVES_HOST || (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1');
+/* Cookies Secure cuando el sitio se sirve por HTTPS (detrás de un proxy). */
+const SECURE_COOKIES = process.env.DARKWAVES_SECURE_COOKIES
+  ? process.env.DARKWAVES_SECURE_COOKIES !== '0'
+  : process.env.NODE_ENV === 'production';
 
 /* El secreto vive en memoria: al reiniciar se invalidan enlaces y sesiones. */
 const SECRET = crypto.randomBytes(32);
@@ -72,6 +80,31 @@ const STATIC_TYPES = {
 
 fs.mkdirSync(MUSIC_DIR, { recursive: true });
 fs.mkdirSync(DATA_DIR, { recursive: true });
+
+/* Primera puesta en marcha con disco vacío: trae la música del repo. */
+function seedMusic() {
+  if (path.resolve(MUSIC_DIR) === path.resolve(BUNDLED_MUSIC_DIR)) return;
+  if (!fs.existsSync(BUNDLED_MUSIC_DIR)) return;
+  try {
+    const onDisk = fs
+      .readdirSync(MUSIC_DIR, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && AUDIO_TYPES.has(path.extname(entry.name).toLowerCase()));
+    if (onDisk.length) return;
+    let copied = 0;
+    for (const entry of fs.readdirSync(BUNDLED_MUSIC_DIR, { withFileTypes: true })) {
+      if (!entry.isFile()) continue;
+      const ext = path.extname(entry.name).toLowerCase();
+      if (!AUDIO_TYPES.has(ext) && entry.name !== 'tracks.json') continue;
+      fs.copyFileSync(path.join(BUNDLED_MUSIC_DIR, entry.name), path.join(MUSIC_DIR, entry.name));
+      if (AUDIO_TYPES.has(ext)) copied += 1;
+    }
+    if (copied) console.log(`  Música copiada al disco persistente: ${copied} pista(s)`);
+  } catch (error) {
+    console.warn(`  No se pudo preparar ${MUSIC_DIR}: ${error.message}`);
+  }
+}
+
+seedMusic();
 
 const PAGES = new Map([
   ['/', 'index.html'],
@@ -191,24 +224,57 @@ function saveUsers() {
 const isOwner = (name) => Boolean(users[name] && users[name].owner);
 
 function dropSessionsOf(name) {
+  let changed = false;
   for (const [token, session] of sessions) {
-    if (session.user === name) sessions.delete(token);
+    if (session.user === name) {
+      sessions.delete(token);
+      changed = true;
+    }
   }
+  if (changed) saveSessions();
 }
 
-const sessions = new Map();
+/* Las sesiones viven en data/sessions.json: un reinicio del host (o el modo
+   reposo de un plan gratuito) ya no saca a nadie del panel. */
+const sessions = new Map(loadSessions());
+
+function loadSessions() {
+  const stored = readJSONFile(SESSIONS_FILE, null);
+  const now = Date.now();
+  const entries = stored && stored.sessions ? Object.entries(stored.sessions) : [];
+  return entries.filter(([, session]) => session && session.exp > now);
+}
+
+function saveSessions() {
+  const now = Date.now();
+  const out = {};
+  for (const [token, session] of sessions) {
+    if (session.exp > now) out[token] = session;
+  }
+  try {
+    writeJSONFile(SESSIONS_FILE, { version: 1, sessions: out });
+  } catch (error) {
+    console.warn(`  No se pudieron guardar las sesiones: ${error.message}`);
+  }
+}
 
 function createSession(user) {
   const token = crypto.randomBytes(32).toString('base64url');
   sessions.set(token, { user, exp: Date.now() + SESSION_TTL });
+  saveSessions();
   return token;
 }
 
 function pruneSessions() {
   const now = Date.now();
+  let changed = false;
   for (const [token, session] of sessions) {
-    if (session.exp < now) sessions.delete(token);
+    if (session.exp < now) {
+      sessions.delete(token);
+      changed = true;
+    }
   }
+  if (changed) saveSessions();
 }
 
 function cookies(req) {
@@ -240,7 +306,8 @@ function sessionFor(req) {
 function appendCookie(res, cookie) {
   const previous = res.getHeader('Set-Cookie');
   const list = previous ? (Array.isArray(previous) ? previous : [previous]) : [];
-  list.push(cookie);
+  const value = SECURE_COOKIES && !/;\s*secure/i.test(cookie) ? `${cookie}; Secure` : cookie;
+  list.push(value);
   res.setHeader('Set-Cookie', list);
 }
 
@@ -258,7 +325,12 @@ function allowAttempt(key, limit = 10, windowMs = 10 * 60 * 1000) {
   return entry.count <= limit;
 }
 
-const clientIp = (req) => req.socket.remoteAddress || 'local';
+/* Detrás de un proxy (Render, Cloudflare…) la IP real viene en X-Forwarded-For. */
+const clientIp = (req) => {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) return String(forwarded).split(',')[0].trim();
+  return req.socket.remoteAddress || 'local';
+};
 
 function sameOrigin(req) {
   const origin = req.headers.origin;
@@ -1113,6 +1185,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
+    if (pathname === '/healthz') {
+      return sendJSON(res, 200, { ok: true, uptime: Math.round(process.uptime()) });
+    }
+
     if (pathname.startsWith('/api/')) return await handleApi(req, res, pathname);
 
     if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -1165,8 +1241,17 @@ server.on('error', (error) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`\n  DrakoTheProducer Player listo en http://localhost:${PORT}`);
-  console.log(`  Panel de administración: http://localhost:${PORT}/admin`);
+  const base = process.env.DARKWAVES_PUBLIC_URL || `http://localhost:${PORT}`;
+  console.log(`\n  DrakoTheProducer Player listo en ${base}`);
+  console.log(`  Panel de administración: ${base}/admin`);
   console.log(`  Usuarios del panel: ${Object.keys(users).length}`);
-  console.log(`  Carpeta de música: ${MUSIC_DIR}\n`);
+  console.log(`  Escuchando en ${HOST}:${PORT}`);
+  console.log(`  Música: ${MUSIC_DIR}`);
+  console.log(`  Datos:  ${DATA_DIR}`);
+  console.log(`  Cookies Secure: ${SECURE_COOKIES ? 'sí' : 'no'}`);
+  if (!SECURE_COOKIES) {
+    console.log('  En el host de producción define NODE_ENV=production\n');
+  } else {
+    console.log('');
+  }
 });
