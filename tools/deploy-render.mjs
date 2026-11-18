@@ -39,7 +39,9 @@ function fail(message) {
 
 if (!KEY) fail('Falta RENDER_API_KEY (Settings → API Keys en Render).');
 if (!USER || !PASSWORD) fail('Faltan --user y --password para la cuenta principal del panel.');
-if (PASSWORD.length < 8) fail('La contraseña del panel necesita al menos 8 caracteres.');
+if (PASSWORD.length < 8 && !args.includes('--allow-weak')) {
+  fail('La contraseña del panel necesita al menos 8 caracteres (o usa --allow-weak a sabiendas).');
+}
 
 const headers = { Authorization: `Bearer ${KEY}`, Accept: 'application/json' };
 
