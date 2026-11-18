@@ -624,13 +624,51 @@ function cookies(req) {
   return out;
 }
 
+/* Orígenes que pueden llamar a la API (el panel del sitio publicado). */
+const ALLOWED_ORIGINS = (
+  process.env.DARKWAVES_ALLOWED_ORIGINS ||
+  'https://josspreview.profilebio.me,http://localhost:4321,http://127.0.0.1:4321'
+)
+  .split(',')
+  .map((item) => item.trim())
+  .filter(Boolean);
+
+function applyCors(req, res) {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Max-Age', '600');
+  }
+}
+
+/** Usuario y contraseña del panel enviados con autenticación básica. */
+function basicUser(req) {
+  const header = req.headers.authorization || '';
+  if (!header.toLowerCase().startsWith('basic ')) return null;
+  try {
+    const raw = Buffer.from(header.slice(6).trim(), 'base64').toString('utf8');
+    const index = raw.indexOf(':');
+    if (index < 0) return null;
+    const name = normalizeUser(raw.slice(0, index));
+    const password = raw.slice(index + 1);
+    if (!users[name] || !verifyPassword(password, users[name])) return null;
+    return { user: name, exp: Date.now() + SESSION_TTL, token: 'basic' };
+  } catch {
+    return null;
+  }
+}
+
 function sessionFor(req) {
   pruneSessions();
   const token = cookies(req).dw_admin;
-  if (!token) return null;
-  const session = sessions.get(token);
-  if (!session || session.exp < Date.now()) return null;
-  return { ...session, token };
+  if (token) {
+    const session = sessions.get(token);
+    if (session && session.exp >= Date.now()) return { ...session, token };
+  }
+  return basicUser(req);
 }
 
 function appendCookie(res, cookie) {
@@ -665,6 +703,7 @@ const clientIp = (req) => {
 function sameOrigin(req) {
   const origin = req.headers.origin;
   if (!origin) return true;
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
   try {
     return new URL(origin).host === req.headers.host;
   } catch {
@@ -1574,7 +1613,14 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { ok: true, uptime: Math.round(process.uptime()) });
     }
 
-    if (pathname.startsWith('/api/')) return await handleApi(req, res, pathname);
+    if (pathname.startsWith('/api/')) {
+      applyCors(req, res);
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        return res.end();
+      }
+      return await handleApi(req, res, pathname);
+    }
 
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       return sendText(res, 405, 'Método no permitido');

@@ -1,256 +1,118 @@
-# DarkWaves — Console
+# DarkWaves
 
-Reproductor musical en negro y azul oscuro. Funciona de dos formas con el mismo código:
+Reproductor de música en negro y azul oscuro para GitHub Pages, con panel de
+administración, contraseña por pista y protectores anti-captura.
 
-- **GitHub Pages** (público, sin servidor): lee la playlist de `music/tracks.json` y sirve el audio desde `music/`.
-- **Local** (privado): un servidor Node lee tu carpeta `music/` y transmite cada pista con enlace firmado.
+- **Sitio:** https://josspreview.profilebio.me
+- **Panel:** https://josspreview.profilebio.me/admin (login `admin` / `admin`)
+- **Tu PC:** doble clic en `Iniciar-Panel.bat` → `http://localhost:4321/admin`
 
 ## Añadir música
 
-Copia tus archivos a `music/` (MP3, WAV, FLAC, M4A, AAC, OGG, OPUS o WEBM) y actualiza la playlist:
+1. Copia el archivo de audio a `music/` (mp3, wav, flac, m4a, aac, ogg, opus, webm).
+2. `npm run manifest` regenera `music/tracks.json`.
+3. Sin servidor, la pista queda **bloqueada** hasta asignarle una contraseña desde
+   el panel local (`npm run dev` → *Biblioteca* → *Editar* → *Nueva contraseña*).
+
+El flujo normal es el del panel: eliges el archivo, rellenas los datos y la clave,
+y el servidor guarda el audio, el título, el artista, el álbum, el género, el año,
+la descripción y la contraseña.
+
+## Uso local (panel completo)
+
+Requiere Node.js 18 o superior. No hay dependencias: no hace falta `npm install`.
 
 ```bash
-npm run manifest
+npm run dev     # o doble clic en Iniciar-Panel.bat
 ```
 
-Si subes la música directamente desde GitHub, la acción **Actualizar playlist** regenera `music/tracks.json` sola al hacer push. No tienes que tocar el JSON a mano.
+Abre http://localhost:4321/admin. Aquí el panel es completo:
 
-Si nombras los archivos como `Artista - Título.mp3`, se separan artista y título automáticamente.
+- **Login dentro del propio panel** (`admin` / `admin` por defecto).
+- **Subir música** con título, artista, álbum, género, año, descripción y contraseña.
+- **Biblioteca**: editar datos, cambiar o quitar la contraseña, borrar la pista.
+- **Usuarios del panel**: crear cuentas, restablecer su contraseña y borrarlas
+  (solo la cuenta principal); todas pueden subir música y editar pistas.
+- **Tu contraseña**: cambiar la de tu propia cuenta.
+- Cada cambio se guarda y el servidor hace `git add` + `commit` + `push` con tu git,
+  así que el sitio publicado se actualiza en ~1 minuto.
+  Se desactiva con `DARKWAVES_PUSH=0`, y el estado se consulta en
+  `GET /api/admin/publish`.
 
-## Uso local
-
-Requiere Node.js 18 o superior. No tiene dependencias: no hace falta `npm install`.
+Contraseñas iniciales: `admin` / `admin` y `jossgiant` / `Dark-Joss-7mB3Zp8R`.
+Cámbialas en *Seguridad* y *Usuarios del panel*. Se pueden fijar de nuevo con:
 
 ```bash
-npm run dev
+npm run reset-accounts -- --users "admin:Clave1,jossgiant:Clave2" --track-password "ClaveDePistas"
 ```
 
-Abre http://localhost:4321. En este modo `/music` no se sirve y el audio sale en streaming por enlaces firmados que caducan.
+## Qué funciona en el sitio publicado (GitHub Pages)
 
-## Panel de administración
+GitHub Pages **solo entrega archivos**: no ejecuta `server.mjs`, así que allí no se
+puede guardar un usuario nuevo ni un MP3. Lo que sí funciona, sin pedir nada:
 
-**Panel público (funciona sin depender de tu PC):**
-<https://darkwaves-links.onrender.com/admin> — entrada con `admin` / `admin`.
-Todo lo que guardas ahí (subir música, editar, claves de pista, usuarios) se escribe
-en este repositorio con la API de GitHub y el sitio de GitHub Pages se actualiza en
-un minuto. El token vive en el servidor de Render; el navegador no pide nada.
-
-**En tu PC:** doble clic en `Iniciar-Panel.bat` → `http://localhost:4321/admin`
-(publica los cambios con tu git local).
-
-**En Windows, doble clic en `Iniciar-Panel.bat`**: arranca el servidor y abre el panel
-en el navegador (`http://localhost:4321/admin`), con el login dentro del propio panel.
-Desde la terminal también vale `npm run dev`.
-
-> **Para tener este mismo panel completo en el dominio público** (subir MP3, crear
-> usuarios, claves) hace falta que el servidor esté alojado: GitHub Pages no ejecuta
-> código. Está todo listo y se despliega con un botón, conectado a este repositorio:
-> **[DESPLIEGUE.md](DESPLIEGUE.md)** →
-> [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/profilebiome/DarkWaves-Links-Prod)
-
-### Lo que guardas en el panel se publica solo en GitHub
-
-Cada cambio hecho en el panel (subir pista, editar, crear usuarios, poner o quitar
-claves) se guarda en tu PC y el servidor hace `git add` + `commit` + `push` con las
-credenciales de git que ya tienes configuradas. El sitio de GitHub Pages se actualiza
-en alrededor de un minuto y el navegador **nunca pide tokens**.
-
-- Estado de la última publicación: `GET /api/admin/publish` (o pulsando *Actualizar*).
-- Se desactiva con `DARKWAVES_PUSH=0 npm run dev`.
-- Autor de los commits: el de tu `git config` (`profilebiome`).
-
-### Administrar desde el móvil
-
-Doble clic en `Iniciar-Panel-Internet.bat`: arranca el panel y abre un túnel temporal
-(`https://…trycloudflare.com`) sin cuentas ni tokens. Sirve mientras este PC esté
-encendido; la URL cambia en cada arranque.
-
-Con el servidor local (`npm run dev`) abre **http://localhost:4321/admin**.
-
-- **Credenciales iniciales:** la cuenta principal es `admin`. Cámbiale la clave en
-  *Tu contraseña* la primera vez, y crea el resto de cuentas en *Usuarios del panel*.
-- Si `data/users.json` ya existe, las claves son las que se hayan guardado; para
-  fijarlas de nuevo: `npm run reset-accounts -- --users "admin:clave,jossgiant:otra"`.
-- Al arrancar por primera vez se crea `data/users.json` (contraseñas con `scrypt`).
-  Si existe el antiguo `data/admin.json`, su cuenta se migra con la misma contraseña.
-  Puedes fijar las credenciales iniciales con `DARKWAVES_ADMIN_USER` y
-  `DARKWAVES_ADMIN_PASSWORD` antes del primer arranque.
-- **Varios administradores:** en *Usuarios del panel* el usuario principal crea
-  cuentas nuevas (de 3 a 32 caracteres: minúsculas, números, punto, guion o guion
-  bajo) con su contraseña. Todos tienen los mismos permisos: subir música, editar
-  pistas, borrarlas y asignar la contraseña de cada audio. Solo el principal crea,
-  borra o restablece cuentas, y su propia cuenta no se puede borrar.
-- **Subir música:** elige el archivo y rellena título, artista, álbum, género, año,
-  descripción y la contraseña de la pista (obligatoria). El archivo se guarda en
-  `music/` y los datos en `data/tracks.json`.
-- **Contraseña por pista (obligatoria):** el audio de cada pista solo se entrega a
-  quien escriba su clave. El reproductor la pide al pulsar la pista y recuerda el
-  permiso 12 h. Una pista subida sin clave (o a la que se le quita) queda bloqueada
-  y no se puede escuchar hasta asignarle una.
-- **Acceso:** el botón *Admin* de la esquina superior derecha del reproductor abre
-  el inicio de sesión; al entrar te lleva al panel.
-- **Editar / borrar:** cada fila de la biblioteca permite cambiar los datos, poner
-  o quitar la contraseña y eliminar el archivo del disco.
-
-`data/` está en `.gitignore`: nunca subas credenciales ni contraseñas al repositorio.
-El panel solo existe en el servidor local; en GitHub Pages no hay backend que pueda
-validar contraseñas ni recibir archivos.
-
-Si quieres abrirlo desde otro equipo de tu red, arranca con
-`DARKWAVES_HOST=0.0.0.0 npm run dev` y hazlo siempre por HTTPS o en una red de
-confianza: el login viaja en texto plano sin TLS.
-
-## Modo estático con cuentas (GitHub Pages)
-
-`shared/accounts.json` publica las cuentas del panel con hash **PBKDF2** (nunca la
-contraseña ni el hash scrypt) y `music/tracks.json` lleva lo mismo para la clave de
-cada pista. Así, sin backend y sin tokens, en el dominio funcionan el login del panel
-y las contraseñas de pista; la biblioteca se muestra en solo lectura. El detalle está
-en la tabla de la sección siguiente.
-
-## Dónde funciona cada cosa (sin tokens, sin APIs)
-
-El panel **no pide ningún token ni API key** en ningún modo. Lo que cambia es quien
-guarda los cambios:
-
-| | Panel en tu PC (`npm run dev`) | Sitio publicado (GitHub Pages) |
+| | Panel en tu PC (`npm run dev`) | Sitio publicado (Pages) |
 | --- | --- | --- |
-| Entrar con usuario y contraseña | Sí | Sí |
+| Login con usuario y contraseña | Sí | Sí |
 | Escuchar pistas con su contraseña | Sí | Sí |
-| Subir música | Sí | No |
+| Subir música | Sí | No (Pages no ejecuta código) |
 | Editar / borrar pistas y claves | Sí | No |
 | Crear / borrar usuarios | Sí | No |
 
-En tu PC hay un servidor (`server.mjs`) que escribe en `data/` y `music/`: por eso
-allí todo funciona sin pedir nada. **GitHub Pages solo entrega archivos**: no puede
-guardar un usuario nuevo ni un MP3, y por eso la biblioteca del panel se muestra en
-solo lectura cuando estás en el dominio.
-
-Para tener el panel completo en la web (igual que en tu PC y sin tokens), el sitio
-tiene que correr en un host con Node — está todo listo en
-[DESPLIEGUE.md](DESPLIEGUE.md) (`render.yaml` o `Dockerfile`).
-
-En GitHub Pages sí funcionan sin servidor, y sin pedir nada:
-
-- El **login** del panel con las cuentas publicadas en `shared/accounts.json`
-  (hash PBKDF2, nunca la contraseña).
-- La **contraseña de cada pista**, verificada en el navegador con la `key` de
-  `music/tracks.json`: sin la clave no se entrega el audio.
-
-Ambos archivos se regeneran solos al guardar desde el servidor, o a mano:
+Los datos de login y las claves de las pistas viajan al sitio dentro de
+`shared/accounts.json` (hash PBKDF2) y `music/tracks.json` (`key`), que el servidor
+local regenera solo:
 
 ```bash
-npm run accounts            # shared/accounts.json desde data/users.json
-npm run manifest            # music/tracks.json desde music/ + data/tracks.json
-npm run reset-accounts -- --users "admin:ClaveLarga1,jossgiant:ClaveLarga2" --track-password "ClaveDePistas"
+npm run accounts   # shared/accounts.json desde data/users.json
+npm run manifest    # music/tracks.json desde music/ + data/tracks.json
 ```
 
-**Límite honesto:** en un sitio estático esos hashes son públicos (se pueden atacar
-por fuerza bruta offline) y los MP3 del repositorio también. Es una puerta de entrada,
-no seguridad real.
+`data/` está en `.gitignore`: las credenciales privadas y las sesiones no se suben.
+
+## DNS en Cloudflare
+
+El dominio `josspreview.profilebio.me` vive en GitHub Pages (archivo `CNAME`). En
+Cloudflare, en la zona `profilebio.me`:
+
+| Tipo | Nombre | Contenido | Proxy |
+| --- | --- | --- | --- |
+| CNAME | `josspreview` | `profilebiome.github.io` | **DNS only** (nube gris) |
+
+Y en GitHub: *Settings → Pages → Custom domain* = `josspreview.profilebio.me`, con
+**Enforce HTTPS** activado. El proxy de Cloudflare debe quedar desactivado (nube
+gris) para que GitHub pueda emitir el certificado.
 
 ## Protección anti-captura
 
-`shared/protect.js` aplica cuatro capas, todas de disuasión:
+`shared/protect.js` aplica disuasores, no una barrera real:
 
-1. **Copia directa:** bloquea clic derecho, arrastre, copia, `Ctrl/Cmd+S`,
-   `Ctrl/Cmd+P`, `PrintScreen` (vacía el portapapeles), `F12` y las herramientas
-   de desarrollo, y oculta el documento al imprimir.
-2. **APIs de captura dentro de la página:** `getDisplayMedia` (compartir pantalla),
-   `captureStream` del audio y picture-in-picture quedan deshabilitados, así que
-   una extensión o un script en la propia página no puede grabar el audio.
-3. **Pestaña oculta o ventana sin foco:** pausa el audio, tapa el contenido con un
-   aviso y lo restaura al volver. Es el instante en que se abre el grabador o se
-   cambia de aplicación.
-4. **Marca de agua:** dominio, usuario (si está logueado) y hora, cada 30 s. No
-   impide grabar, pero identifica la sesión si la grabación se filtra.
+1. Bloquea menú contextual, arrastre, copia, `Ctrl/Cmd+S`, `Ctrl/Cmd+P`,
+   `PrintScreen`, `F12` y las herramientas de desarrollo; oculta el documento al imprimir.
+2. Deshabilita dentro de la página `getDisplayMedia`, `captureStream` y
+   picture-in-picture.
+3. Si la pestaña se oculta o la ventana pierde el foco: pausa el audio, tapa el
+   contenido con un aviso y lo restaura al volver.
+4. Marca de agua con dominio, usuario y hora cada 30 s.
 
-**Límite real:** ningún navegador puede impedir una captura o una grabación. El
-sistema operativo captura píxeles sin consultar a la página: Win+PrtScn, Recortes,
-Cmd+Shift+5, OBS, Game Bar, una capturadora HDMI o el grabador nativo de Android e
-iOS (que además no dispara ningún evento, así que es indetectable). Una cámara
-apuntando al monitor no se puede bloquear de ninguna manera. Para una protección
-de salida real hace falta DRM (Widevine/FairPlay con HDCP), que este proyecto no
-implementa y que tampoco detiene una cámara.
-
-## Publicar en GitHub Pages (solo reproductor, sin backend)
-
-El sitio se sirve desde la raíz de la rama `main`:
-
-1. `index.html` en la raíz (no dentro de una subcarpeta).
-2. `.nojekyll` para desactivar Jekyll.
-3. `CNAME` con el dominio de Pages (`josspreview.profilebio.me`).
-4. Settings → Pages → Deploy from a branch → `main` / `(root)`.
-
-Con eso la portada ya no muestra el README: carga el reproductor.
-
-## Publicar con backend (usuarios, panel y contraseñas de verdad)
-
-GitHub Pages no ejecuta `server.mjs`: allí `/api/*` responde 404, el login no
-funciona y las contraseñas por pista no se aplican. Para que el panel, las cuentas
-y las claves de pista funcionen, el sitio tiene que correr en un host con Node y
-un disco persistente.
-
-### Render (Blueprint incluido)
-
-1. Dashboard → **New → Blueprint** → elige este repositorio. Render lee
-   `render.yaml` y crea el servicio con su disco de 5 GB en `/var/data`.
-2. Define las variables que pide (`sync: false`): `DARKWAVES_ADMIN_USER` y
-   `DARKWAVES_ADMIN_PASSWORD`. Solo se usan la primera vez, cuando `data/` está
-   vacío; después se cambia la clave en `/admin` → *Seguridad*.
-3. Apunta el dominio: en el servicio → *Custom Domains* agrega
-   `josspreview.profilebio.me` y crea en tu DNS el CNAME que te indique Render.
-4. Si ese dominio sigue apuntando a GitHub Pages, primero quita el dominio en
-   Settings → Pages para que no peleen por el mismo CNAME.
-
-El disco requiere una instancia de pago (Starter). Sin disco el sitio funciona,
-pero pierde en cada reinicio las subidas, las cuentas y las sesiones.
-
-### Docker (Railway, Fly.io, VPS)
-
-```bash
-docker build -t darkwaves .
-docker run -d -p 4321:4321 -v darkwaves-data:/var/data \
-  -e NODE_ENV=production -e DARKWAVES_PUBLIC_URL=https://tu-dominio \
-  -e DARKWAVES_ADMIN_USER=admin -e DARKWAVES_ADMIN_PASSWORD='algo-largo' \
-  darkwaves
-```
-
-Variables que entiende el servidor:
-
-| Variable | Para qué |
-| --- | --- |
-| `PORT` | Puerto del host (Render/Railway lo inyectan). También `DARKWAVES_PORT`. |
-| `DARKWAVES_HOST` | Interfaz de escucha. Por defecto `0.0.0.0` con `NODE_ENV=production`. |
-| `DARKWAVES_DATA_DIR` | Carpeta de `users.json`, `tracks.json`, `sessions.json` (disco). |
-| `DARKWAVES_MUSIC_DIR` | Carpeta de audio (disco). Si está vacía se copia la del repo. |
-| `DARKWAVES_SECURE_COOKIES` | `1`/`0` para forzar cookies `Secure`. Por defecto activas en producción. |
-| `DARKWAVES_PUBLIC_URL` | Solo para los mensajes del arranque. |
-| `DARKWAVES_ADMIN_USER` / `DARKWAVES_ADMIN_PASSWORD` | Cuenta principal en el primer arranque. |
-
-`GET /healthz` responde `{"ok":true}` para el chequeo del host.
-
-### Después del primer despliegue
-
-1. Entra a `/admin` con la cuenta principal y cambia la contraseña.
-2. Crea las cuentas de *Usuarios del panel* que necesites.
-3. **Asigna contraseña a cada pista:** las pistas que ya existían antes del panel
-   no tienen clave y quedan bloqueadas (`hasPassword: false`). En *Biblioteca* →
-   editar → *Nueva contraseña* se arregla.
-
-## Límite importante
-
-En GitHub Pages todos los archivos del repositorio son públicos: cualquiera puede abrir la URL del MP3. **No es posible impedir la descarga en hosting estático**, solo se puede ocultar el enlace en la interfaz, y las contraseñas por pista del panel **no se aplican** en ese modo. Con el backend desplegado, el audio sale por `/stream/<id>?t=<firma>` con enlace firmado que caduca a las 6 h y `music/` nunca se sirve directo.
+**Límite:** ningún navegador puede impedir una grabación. Windows/macOS, OBS, una
+capturadora o el grabador nativo de Android/iOS capturan la pantalla sin consultar
+a la página, y una cámara apuntando al monitor no se puede bloquear. Esto encarece
+la copia y deja rastro; no la impide.
 
 ## Estructura
 
 ```
-index.html              reproductor
-admin.html              panel de administración
-shared/                 motor de audio, estilos y anti-captura
-music/                  tus pistas + tracks.json
-data/                   credenciales y metadatos del panel (privado, ignorado por git)
-tools/build-manifest.mjs   genera la playlist
-server.mjs              servidor local + API del panel
-.github/workflows/      actualiza la playlist al subir música
+index.html            reproductor (GitHub Pages)
+admin.html            panel de administración
+server.mjs            servidor local: panel completo, streaming firmado, sesiones
+shared/player.js      reproductor y visualizador
+shared/protect.js     disuasores anti-captura y marca de agua
+shared/static-auth.js login y claves de pista sin servidor (PBKDF2, WebCrypto)
+shared/accounts.json  cuentas publicadas (solo hashes PBKDF2)
+shared/password-record.mjs  scrypt (servidor) + PBKDF2 (navegador)
+music/                audio y music/tracks.json
+tools/                manifest, cuentas, reinicio de credenciales, check-deploy
+data/                 privado (gitignored): usuarios, metadatos con claves, sesiones
+Iniciar-Panel.bat     arranca el panel local y abre el navegador
 ```
