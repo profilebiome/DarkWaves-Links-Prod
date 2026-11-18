@@ -6,7 +6,7 @@
 <title>DrakoTheProducer Player</title>
 <meta name="description" content="DrakoTheProducer Player: reproductor musical en streaming.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237dd3fc' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M9 18V6.4l10-2v11.2'/%3E%3Ccircle cx='6.5' cy='18' r='2.5'/%3E%3Ccircle cx='16.5' cy='15.6' r='2.5'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="/shared/base.css">
+<link rel="stylesheet" href="/shared/base.css?v=20261118c">
 <meta name="theme-color" content="#000000">
 <style>
   :root {
@@ -787,11 +787,11 @@
 <script type="module">
   import {
     Player, mountIcons, icons, formatTime, artFor, initialsOf, hotkeys, escapeHtml,
-  } from "/shared/player.js";
-  import { protectMedia } from "/shared/protect.js";
+  } from "/shared/player.js?v=20261118c";
+  import { protectMedia } from "/shared/protect.js?v=20261118c";
   import {
     staticLogin, staticUnlockTrack, applyStaticGrants,
-  } from "/shared/static-auth.js";
+  } from "/shared/static-auth.js?v=20261118c";
 
   mountIcons();
   // Solo bloqueo de captura: no dibuja nada en la página.
