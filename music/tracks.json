@@ -23,6 +23,20 @@
         "hash": "a11e93a1a146f4fe204583f3bcc37025e8d9a749cd258bdc2ae894ed110aa4e6"
       },
       "locked": true
+    },
+    {
+      "file": "Tema Publico.mp3",
+      "title": "Tema Publico",
+      "artist": "Joss Giant",
+      "ext": "mp3",
+      "album": "Demo",
+      "year": "2026",
+      "key": {
+        "salt": "af2cee8848d04d3058d359d298f4da89",
+        "iterations": 210000,
+        "hash": "9b37e5fc02353e16ab218c04b43613865c57c0a423fd364c85e6c791cf27f68a"
+      },
+      "locked": true
     }
   ]
 }
