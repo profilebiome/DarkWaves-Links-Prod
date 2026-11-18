@@ -24,18 +24,6 @@
         "hash": "5894fa6c9e49777e53c3b620f78911bf30e76e2d11b6c676ea248f0ed5c09e72"
       },
       "locked": true
-    },
-    {
-      "file": "Prueba_Proteccion.mp3",
-      "title": "Prueba Proteccion",
-      "artist": "Test",
-      "ext": "mp3",
-      "key": {
-        "salt": "bda053e2e25e9fb284bf942f9e7566d7",
-        "iterations": 100000,
-        "hash": "69b2f360bafa34b288120b4c6f2f4a278a510f032b7dd2abdeb8f70908613ed2"
-      },
-      "locked": true
     }
   ]
 }
