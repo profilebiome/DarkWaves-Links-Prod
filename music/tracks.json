@@ -38,20 +38,6 @@
         "hash": "5894fa6c9e49777e53c3b620f78911bf30e76e2d11b6c676ea248f0ed5c09e72"
       },
       "locked": true
-    },
-    {
-      "file": "PlinPlaKi Joss.wav",
-      "title": "Plin Plink Plaki",
-      "artist": "Joss Giant",
-      "ext": "wav",
-      "url": "https://darkwaves-panel.profilebio-me.workers.dev/audio/PlinPlaKi%20Joss.wav",
-      "assetId": 764140991,
-      "key": {
-        "salt": "e7e6f7783e59582bb9d22e3d08a2d4d4",
-        "iterations": 100000,
-        "hash": "23809d0d4947b9c82be00f8bcb12c3927be2bbef938789eef8ab16cb41b3bf2d"
-      },
-      "locked": true
     }
   ]
 }
