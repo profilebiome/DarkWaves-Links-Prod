@@ -1134,7 +1134,9 @@
       if (response.status === 404 || response.status === 405 || response.status >= 500) {
         const result = await staticUnlockTrack(pending.file || pending.id, unlock.pass.value);
         if (!result.ok) throw new Error(result.error);
-        if (track) track.url = `music/${encodeURIComponent(track.file || track.id)}`;
+        // Solo los audios del repositorio usan music/<archivo>; los subidos
+        // desde el panel ya traen su URL del Worker y se respeta.
+        if (track && !track.url) track.url = `music/${encodeURIComponent(track.file || track.id)}`;
       } else {
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || "No se pudo desbloquear la pista");
@@ -1193,7 +1195,7 @@
     if (changed) {
       for (const track of tracks) {
         if (!track.locked && !track.url) {
-          track.url = `music/${encodeURIComponent(track.file || track.id)}`;
+          if (!track.url) track.url = `music/${encodeURIComponent(track.file || track.id)}`;
         }
       }
       render();
