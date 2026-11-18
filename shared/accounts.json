@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-18T14:04:18.196Z",
+  "updatedAt": "2026-11-18T14:05:25.175Z",
   "users": {
     "admin": {
       "salt": "126c11182df2b5a467c8e31c6604dd77",
@@ -13,13 +13,6 @@
       "iterations": 210000,
       "hash": "84c24c8a7f9e48a6e6fa3b8bbf892624715ff8fd7cbd3270824e2da282fbb9d2",
       "owner": false
-    },
-    "maria_prueba": {
-      "salt": "d199505d010d3ae6dbde0b2b2e2db38a",
-      "iterations": 210000,
-      "hash": "28d2e32f3c8a6c32b1544d5bdc3a1480a402dc96c14162c798935b4391b133d0",
-      "createdAt": "2026-11-18T14:04:18.196Z",
-      "updatedAt": "2026-11-18T14:04:18.196Z"
     }
   }
 }
