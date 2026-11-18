@@ -109,6 +109,9 @@ export async function staticLogin(user, password) {
   const name = String(user || "").trim().toLowerCase();
   if (!name || !password) return null;
   const users = await loadStaticAccounts();
+  if (!Object.keys(users).length) {
+    throw new Error("No se pudo cargar shared/accounts.json. Recarga con Ctrl+Shift+R.");
+  }
   const record = users[name];
   if (!record) return null;
   const ok = await verifyPasswordRecord(record, password);
