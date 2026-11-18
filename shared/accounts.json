@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-18T04:20:05.936Z",
+  "users": {
+    "admin": {
+      "salt": "74e38025d07deff0f9103216083438ec",
+      "iterations": 210000,
+      "hash": "7582971183b9bd202c6c4d0cfc4c8ad05fdae1dd79899ac84b5fb5544d85101d",
+      "owner": true
+    },
+    "jossgiant": {
+      "salt": "f1ff81c021b5140c00c4970c8c41d33f",
+      "iterations": 210000,
+      "hash": "a8e9a4d773eeaa4abb46ff933ade447f5252aa8a07542f6ed4d192b3b574f6ca",
+      "owner": false
+    }
+  }
+}

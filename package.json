@@ -8,7 +8,11 @@
     "dev": "node server.mjs",
     "predev": "node tools/build-manifest.mjs",
     "start": "node server.mjs",
-    "manifest": "node tools/build-manifest.mjs"
+    "prestart": "node tools/publish-auth.mjs",
+    "manifest": "node tools/build-manifest.mjs",
+    "accounts": "node tools/publish-auth.mjs",
+    "reset-accounts": "node tools/reset-accounts.mjs",
+    "check-deploy": "node tools/check-deploy.mjs"
   },
   "engines": {
     "node": ">=18"

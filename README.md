@@ -62,6 +62,31 @@ Si quieres abrirlo desde otro equipo de tu red, arranca con
 `DARKWAVES_HOST=0.0.0.0 npm run dev` y hazlo siempre por HTTPS o en una red de
 confianza: el login viaja en texto plano sin TLS.
 
+## Modo estático con cuentas (GitHub Pages)
+
+`shared/accounts.json` publica las cuentas del panel con hash **PBKDF2** (nunca la
+contraseña ni el hash scrypt), y `music/tracks.json` lleva lo mismo para la clave
+de cada pista. Así, sin backend:
+
+- El botón *Admin* de la portada y `/admin` aceptan las mismas cuentas (sesión de
+  12 h guardada en el navegador).
+- Cada pista pide su contraseña al pulsarla y el permiso se recuerda 12 h.
+- La biblioteca del panel se muestra en **solo lectura**: subir, editar y gestionar
+  usuarios siguen necesitando el servidor.
+
+Ambos archivos se regeneran solos cuando el panel guarda cambios, o a mano:
+
+```bash
+npm run accounts            # shared/accounts.json desde data/users.json
+npm run manifest            # music/tracks.json desde music/ + data/tracks.json
+npm run reset-accounts -- --users "admin:ClaveLarga1,jossgiant:ClaveLarga2" --track-password "ClaveDePistas"
+```
+
+**Límite:** en un sitio estático esos hashes son públicos (se pueden atacar por
+fuerza bruta offline) y los MP3 del repositorio también. Es una puerta de entrada,
+no seguridad real: usa contraseñas largas y, si el contenido importa, publica el
+host con Node.
+
 ## Protección anti-captura
 
 `shared/protect.js` aplica cuatro capas, todas de disuasión:

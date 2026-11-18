@@ -4,13 +4,25 @@
       "file": "Joss Giant Ft LH Shango.mp3",
       "title": "Joss Giant Ft LH Shango",
       "artist": "Artista desconocido",
-      "ext": "mp3"
+      "ext": "mp3",
+      "key": {
+        "salt": "8645633d7e50d787b1d41fd35ef67b9d",
+        "iterations": 210000,
+        "hash": "bb5de9c1d0ba639459d0030c786481b16a06302ccf1b8309d350ca2c60c423cd"
+      },
+      "locked": true
     },
     {
       "file": "Joss Giant Shango Solo.mp3",
       "title": "Joss Giant Shango Solo",
       "artist": "Artista desconocido",
-      "ext": "mp3"
+      "ext": "mp3",
+      "key": {
+        "salt": "66c04930fd7bff29e91b86c4061e39f3",
+        "iterations": 210000,
+        "hash": "a11e93a1a146f4fe204583f3bcc37025e8d9a749cd258bdc2ae894ed110aa4e6"
+      },
+      "locked": true
     }
   ]
 }

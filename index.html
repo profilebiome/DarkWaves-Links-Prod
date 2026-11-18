@@ -789,6 +789,9 @@
     Player, mountIcons, icons, formatTime, artFor, initialsOf, hotkeys, escapeHtml,
   } from "/shared/player.js";
   import { protectMedia } from "/shared/protect.js";
+  import {
+    staticLogin, staticUnlockTrack, applyStaticGrants,
+  } from "/shared/static-auth.js";
 
   mountIcons();
   protectMedia();
@@ -1062,11 +1065,17 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: pending.id, password: unlock.pass.value }),
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "No se pudo desbloquear la pista");
       const track = player.tracks.find((item) => item.id === pending.id);
+      // 404 = no hay servidor (GitHub Pages): la clave se comprueba en el navegador.
+      if (response.status === 404) {
+        const result = await staticUnlockTrack(pending.file || pending.id, unlock.pass.value);
+        if (!result.ok) throw new Error(result.error);
+      } else {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "No se pudo desbloquear la pista");
+        if (track && data.url) track.url = data.url;
+      }
       if (!track) throw new Error("Pista no encontrada");
-      track.url = data.url;
       track.locked = false;
       unlock.pass.value = "";
       unlock.dialog.close();
@@ -1079,6 +1088,12 @@
   });
 
   player.addEventListener("locked", (event) => askPassword(event.detail.track));
+
+  /* En modo estático, las pistas desbloqueadas se recuerdan 12 h. */
+  player.addEventListener("tracks", async (event) => {
+    const changed = await applyStaticGrants(event.detail && event.detail.tracks ? event.detail.tracks : []);
+    if (changed) render();
+  });
 
   /* Si el enlace firmado caduca o el archivo cambia, se renueva solo una vez. */
   const recovered = new Set();
@@ -1139,7 +1154,12 @@
       });
       const data = await response.json().catch(() => ({}));
       if (response.status === 404) {
-        throw new Error("El panel solo funciona con el servidor (npm run dev)");
+        // Sin backend (GitHub Pages): se verifica contra shared/accounts.json.
+        const account = await staticLogin(adminUi.user.value, adminUi.pass.value);
+        if (!account) throw new Error("Usuario o contraseña incorrectos");
+        adminUi.pass.value = "";
+        window.location.href = "/admin";
+        return;
       }
       if (!response.ok) throw new Error(data.error || "No se pudo iniciar sesión");
       adminUi.pass.value = "";

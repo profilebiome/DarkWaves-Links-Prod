@@ -13,6 +13,10 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
+import { makeRecord, verifyRecord } from './shared/password-record.mjs';
+import { publishAccounts } from './tools/publish-auth.mjs';
+import { buildManifest } from './tools/build-manifest.mjs';
+
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const BUNDLED_MUSIC_DIR = path.join(ROOT, 'music');
 /* En un host con disco persistente, music/ y data/ se montan fuera del repo. */
@@ -164,17 +168,13 @@ function uniquePath(dir, name) {
 /* Contraseñas y sesiones                                              */
 /* ------------------------------------------------------------------ */
 
+/* scrypt para el servidor + PBKDF2 para verificar en el navegador sin backend. */
 function makePasswordRecord(password) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-  return { salt, hash };
+  return makeRecord(password);
 }
 
 function verifyPassword(password, record) {
-  if (!record || !record.salt || !record.hash) return false;
-  const hash = crypto.scryptSync(password, record.salt, 64);
-  const stored = Buffer.from(record.hash, 'hex');
-  return hash.length === stored.length && crypto.timingSafeEqual(hash, stored);
+  return verifyRecord(password, record);
 }
 
 const USER_NAME = /^[a-z0-9._-]{3,32}$/;
@@ -217,8 +217,21 @@ function loadUsers() {
 
 let users = loadUsers();
 
+/* Publica el verificador PBKDF2 de las cuentas para el modo estático. */
+try {
+  publishAccounts();
+} catch (error) {
+  console.warn(`  No se pudo publicar shared/accounts.json: ${error.message}`);
+}
+
 function saveUsers() {
   writeJSONFile(USERS_FILE, { version: 1, users });
+  // El login sin backend (GitHub Pages) verifica contra shared/accounts.json.
+  try {
+    publishAccounts();
+  } catch (error) {
+    console.warn(`  No se pudo publicar shared/accounts.json: ${error.message}`);
+  }
 }
 
 const isOwner = (name) => Boolean(users[name] && users[name].owner);
@@ -406,6 +419,12 @@ function metaStore() {
 
 function saveMeta() {
   writeJSONFile(META_FILE, metaStore());
+  // music/tracks.json alimenta el modo estático: claves de pista y bloqueo.
+  try {
+    buildManifest();
+  } catch (error) {
+    console.warn(`  No se pudo regenerar music/tracks.json: ${error.message}`);
+  }
 }
 
 function fileTracks() {

@@ -418,7 +418,13 @@
     <h1>Panel de administración</h1>
     <p class="sub">Sube pistas a <code>music/</code>, define título, artista, álbum y todos sus datos, y protege cada track con su propia contraseña.</p>
 
-    <div class="card">
+    <div class="notice" id="static-note" hidden>
+      Modo estático (GitHub Pages): has entrado con tu cuenta, pero aquí la biblioteca es
+      <strong>solo lectura</strong>. Para subir, editar o gestionar usuarios abre el panel con el
+      servidor: <code>npm run dev</code> o el host con Node (ver <code>DESPLIEGUE.md</code>).
+    </div>
+
+    <div class="card" id="upload-card">
       <div class="card-head"><span class="bar"></span><h2>Subir música</h2><small id="upload-name">MP3 · WAV · FLAC · M4A · AAC · OGG · OPUS · WEBM</small></div>
       <form id="upload-form">
         <div class="grid">
@@ -440,7 +446,7 @@
       </form>
     </div>
 
-    <div class="card">
+    <div class="card" id="library-card">
       <div class="card-head"><span class="bar"></span><h2>Biblioteca</h2><small id="track-count">0 pistas</small></div>
       <div class="table-wrap">
         <table>
@@ -496,7 +502,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="pass-card">
       <div class="card-head"><span class="bar"></span><h2>Tu contraseña</h2></div>
       <p class="hint">Cambia la contraseña con la que entras al panel.</p>
       <form id="pass-form" autocomplete="off">
@@ -557,6 +563,10 @@
 </dialog>
 
 <script type="module">
+  import {
+    staticLogin, readStaticSession, clearStaticSession,
+  } from "/shared/static-auth.js";
+
   const $ = (selector) => document.querySelector(selector);
 
   const el = {
@@ -565,6 +575,9 @@
     who: $("#who"),
     logout: $("#logout"),
     serverNote: $("#server-note"),
+    staticNote: $("#static-note"),
+    uploadCard: $("#upload-card"),
+    passCard: $("#pass-card"),
     loginForm: $("#login-form"),
     loginUser: $("#login-user"),
     loginPass: $("#login-pass"),
@@ -601,7 +614,7 @@
     userPassStatus: $("#user-pass-status"),
   };
 
-  const state = { tracks: [], editing: null, owner: false, me: "" };
+  const state = { tracks: [], editing: null, owner: false, me: "", static: false };
   let sessionChecked = false;
 
   async function api(url, options = {}) {
@@ -646,7 +659,11 @@
     el.serverNote.hidden = true;
     state.me = user;
     state.owner = Boolean(owner);
-    el.usersCard.hidden = !state.owner;
+    el.usersCard.hidden = !state.owner || state.static;
+    // Sin backend no hay subida ni cambios: se ocultan esos bloques.
+    el.staticNote.hidden = !state.static;
+    el.uploadCard.hidden = state.static;
+    el.passCard.hidden = state.static;
   }
 
   function showLogin() {
@@ -655,7 +672,11 @@
     el.who.hidden = true;
     el.logout.hidden = true;
     state.owner = false;
+    state.static = false;
     el.usersCard.hidden = true;
+    el.staticNote.hidden = true;
+    el.uploadCard.hidden = false;
+    el.passCard.hidden = false;
   }
 
   /* ------------------------- sesión ------------------------- */
@@ -667,9 +688,24 @@
       await loadTracks();
       await loadUsers();
     } catch (error) {
-      if (error.status === 401) showLogin();
-      else if (error.status === 404) el.serverNote.hidden = false;
-      else showLogin();
+      if (error.status === 401) {
+        showLogin();
+        return;
+      }
+      if (error.status === 404) {
+        // Sin backend (GitHub Pages): la sesión vive en el navegador.
+        const session = await readStaticSession();
+        if (!session) {
+          el.serverNote.hidden = false;
+          return;
+        }
+        state.static = true;
+        showApp(session.user, session.owner);
+        await loadTracks();
+        return;
+      }
+      if (error.message === "Servidor no disponible") el.serverNote.hidden = false;
+      showLogin();
     }
   }
 
@@ -677,11 +713,29 @@
     event.preventDefault();
     setStatus(el.loginStatus, "Comprobando…");
     try {
-      const data = await api("/api/admin/login", {
+      const response = await fetch("/api/admin/login", {
         method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user: el.loginUser.value.trim(), password: el.loginPass.value }),
       });
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : {};
+
+      // 404 = sitio estático: se verifica contra shared/accounts.json.
+      if (response.status === 404) {
+        const account = await staticLogin(el.loginUser.value, el.loginPass.value);
+        if (!account) throw new Error("Usuario o contraseña incorrectos");
+        el.loginPass.value = "";
+        setStatus(el.loginStatus, "");
+        state.static = true;
+        showApp(account.user, account.owner);
+        await loadTracks();
+        return;
+      }
+      if (!response.ok) throw new Error(data.error || `Error ${response.status}`);
+
       el.loginPass.value = "";
       setStatus(el.loginStatus, "");
       showApp(data.user, data.owner);
@@ -694,6 +748,7 @@
 
   el.logout.addEventListener("click", async () => {
     try { await api("/api/admin/logout", { method: "POST" }); } catch { /* nada */ }
+    await clearStaticSession();
     state.tracks = [];
     showLogin();
   });
@@ -701,6 +756,7 @@
   /* ------------------------- biblioteca ------------------------- */
 
   async function loadTracks() {
+    if (state.static) return loadStaticTracks();
     setStatus(el.listStatus, "Cargando…");
     try {
       const data = await api("/api/admin/tracks");
@@ -753,6 +809,13 @@
       cellSize.textContent = bytes(track.size);
 
       const cellActions = document.createElement("td");
+      if (state.static) {
+        // Sin backend no hay edición: la tabla queda en solo lectura.
+        tr.append(cellTitle, cellArtist, cellAlbum, cellYear, cellLock, cellSize, cellActions);
+        el.rows.append(tr);
+        continue;
+      }
+
       const actions = document.createElement("div");
       actions.className = "row-actions";
 
@@ -773,6 +836,33 @@
 
       tr.append(cellTitle, cellArtist, cellAlbum, cellYear, cellLock, cellSize, cellActions);
       el.rows.append(tr);
+    }
+  }
+
+  /* Modo estático (GitHub Pages): la biblioteca sale de music/tracks.json. */
+  async function loadStaticTracks() {
+    setStatus(el.listStatus, "Cargando…");
+    try {
+      const response = await fetch("music/tracks.json", { cache: "no-store" });
+      if (!response.ok) throw new Error(`No se pudo leer la biblioteca (${response.status})`);
+      const data = await response.json();
+      state.tracks = (Array.isArray(data.tracks) ? data.tracks : []).map((track) => ({
+        id: track.file,
+        file: track.file,
+        title: track.title,
+        artist: track.artist,
+        album: track.album || "",
+        genre: track.genre || "",
+        year: track.year || "",
+        description: track.description || "",
+        ext: track.ext,
+        size: 0,
+        hasPassword: Boolean(track.key),
+      }));
+      renderTracks();
+      setStatus(el.listStatus, "Solo lectura: abre el servidor para editar", "");
+    } catch (error) {
+      setStatus(el.listStatus, error.message, "error");
     }
   }
 
@@ -975,6 +1065,10 @@
   }
 
   async function loadUsers() {
+    if (state.static) {
+      el.usersCard.hidden = true;
+      return;
+    }
     if (!state.owner) {
       el.usersCard.hidden = true;
       return;
