@@ -1073,8 +1073,9 @@
         body: JSON.stringify({ id: pending.id, password: unlock.pass.value }),
       });
       const track = player.tracks.find((item) => item.id === pending.id);
-      // 404/405 = no hay servidor (GitHub Pages): la clave se comprueba en el navegador.
-      if (response.status === 404 || response.status === 405) {
+      // Sin servidor (404/405) o un 5xx puntual de GitHub Pages:
+      // la clave se comprueba en el navegador.
+      if (response.status === 404 || response.status === 405 || response.status >= 500) {
         const result = await staticUnlockTrack(pending.file || pending.id, unlock.pass.value);
         if (!result.ok) throw new Error(result.error);
         if (track) track.url = `music/${encodeURIComponent(track.file || track.id)}`;

@@ -134,22 +134,19 @@ export class Player extends EventTarget {
 
   async load() {
     let data = null;
-    let serverError = null;
     try {
-      // Modo local: el servidor lee la carpeta music/ y firma cada pista.
+      // Modo con servidor: lee la carpeta music/ y firma cada pista.
       const response = await fetch("/api/tracks", { cache: "no-store" });
       if (response.ok) data = await response.json();
-      else if (response.status !== 404) {
-        serverError = new Error(`El servidor respondió ${response.status}. Recarga la página.`);
-      }
+      // Cualquier otro estado (404, 405 o un 5xx puntual de GitHub Pages)
+      // significa "aquí no hay servidor": se usa la playlist estática.
     } catch {
       // Sin servidor: se intenta la playlist estática (GitHub Pages).
     }
-    if (serverError) throw serverError;
 
     if (!data) {
       // Modo estático: playlist generada en music/tracks.json.
-      const response = await fetch("music/tracks.json", { cache: "no-store" });
+      const response = await fetch(`music/tracks.json?t=${Date.now()}`, { cache: "no-store" });
       if (!response.ok) {
         throw new Error("No hay playlist. Agrega tus temas a la carpeta music/.");
       }
