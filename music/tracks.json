@@ -2,6 +2,20 @@
   "version": 1,
   "tracks": [
     {
+      "file": "ClaveTest.wav",
+      "title": "ClaveTest",
+      "artist": "Test",
+      "ext": "wav",
+      "url": "https://darkwaves-panel.profilebio-me.workers.dev/audio/ClaveTest.wav",
+      "assetId": 764645004,
+      "key": {
+        "salt": "9d6adb22ccb7b5765eab274e62f712c5",
+        "iterations": 100000,
+        "hash": "e879af812664f6e87fc546c35a83f8174caa3d53bbd2fbb84092b6dbc3696f67"
+      },
+      "locked": true
+    },
+    {
       "file": "Joss Giant Ft LH Shango.mp3",
       "title": "Joss Giant Ft LH Shango",
       "artist": "Artista desconocido",
