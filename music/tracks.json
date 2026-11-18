@@ -24,20 +24,6 @@
         "hash": "5894fa6c9e49777e53c3b620f78911bf30e76e2d11b6c676ea248f0ed5c09e72"
       },
       "locked": true
-    },
-    {
-      "file": "Prueba Web 3MB.mp3",
-      "title": "Prueba Web 3MB",
-      "artist": "Test",
-      "ext": "mp3",
-      "url": "https://github.com/profilebiome/DarkWaves-Links-Prod/releases/download/audio/Prueba.Web.3MB.mp3",
-      "assetId": 764128667,
-      "key": {
-        "salt": "f6208eae3ee3f5f60d2b4c9a1124314d",
-        "iterations": 100000,
-        "hash": "23b94f3ae702cc736cd27584d769aaaa8183bff4ae70c14eb99a93631681ad98"
-      },
-      "locked": true
     }
   ]
 }
