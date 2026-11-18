@@ -89,6 +89,21 @@ export function fileToBase64(file) {
 /* ------------------------------ peticiones ------------------------------ */
 
 function httpError(status, data) {
+  const message = data && data.message ? String(data.message) : "";
+  const readonly =
+    status === 403 && /not accessible by personal access token/i.test(message);
+
+  if (readonly) {
+    const error = new Error(
+      "Tu token es de SOLO LECTURA. En GitHub: Settings → Developer settings → " +
+        "Personal access tokens → tu token → Permissions → Contents: Read and write → Save. " +
+        "Luego pulsa Desconectar y vuelve a conectarlo."
+    );
+    error.status = 403;
+    error.readonly = true;
+    return error;
+  }
+
   const map = {
     401: "Token inválido o revocado",
     403: "GitHub rechazó la operación (permisos del token o límite de peticiones)",
@@ -97,7 +112,7 @@ function httpError(status, data) {
     413: "El archivo supera el máximo de la API de GitHub (100 MB)",
     422: "GitHub rechazó los datos enviados",
   };
-  const detail = data && data.message ? ` — ${data.message}` : "";
+  const detail = message ? ` — ${message}` : "";
   const error = new Error((map[status] || `Error ${status}`) + detail);
   error.status = status;
   return error;

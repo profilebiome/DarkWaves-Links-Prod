@@ -432,7 +432,10 @@
         GitHub no permite escribir sin credenciales. Crea un token <em>fine-grained</em> en
         GitHub → Settings → Developer settings → Personal access tokens, con
         <code>Repository access: solo este repositorio</code> y permiso
-        <code>Contents: Read and write</code>. Pégalo aquí: queda guardado solo en este navegador.
+        <code>Contents: Read and write</code>. Si el token es de <strong>solo lectura</strong>,
+        conectar funciona pero al guardar verás un error 403 de GitHub.
+        El token queda guardado solo en este navegador: cada administrador pega el suyo
+        (o el mismo) una vez en su propio equipo.
       </p>
       <div class="grid">
         <label class="wide"><span>Token</span><input id="gh-token" type="password" autocomplete="off" placeholder="github_pat_…"></label>
