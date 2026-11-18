@@ -2,18 +2,6 @@
   "version": 1,
   "tracks": [
     {
-      "file": "Auto Dominio.mp3",
-      "title": "Auto Dominio",
-      "artist": "Joss Giant",
-      "ext": "mp3",
-      "key": {
-        "salt": "bc65ad28be28f2b895dd30a960409839",
-        "iterations": 100000,
-        "hash": "71398a2e843a8fb52f687ca66c5509d299ecb17762aa2920d3c384c9e1e178da"
-      },
-      "locked": true
-    },
-    {
       "file": "Joss Giant Ft LH Shango.mp3",
       "title": "Joss Giant Ft LH Shango",
       "artist": "Artista desconocido",
