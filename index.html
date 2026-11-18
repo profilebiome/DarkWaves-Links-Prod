@@ -790,11 +790,18 @@
   } from "/shared/player.js";
   import { protectMedia } from "/shared/protect.js";
   import {
-    staticLogin, staticUnlockTrack, applyStaticGrants,
+    staticLogin, staticUnlockTrack, applyStaticGrants, readStaticSession,
   } from "/shared/static-auth.js";
 
   mountIcons();
   protectMedia();
+
+  /* La marca de agua lleva el usuario si hay sesión iniciada. */
+  readStaticSession().then((session) => {
+    if (!session) return;
+    document.body.dataset.dwUser = session.user;
+    document.dispatchEvent(new Event("dw:user"));
+  });
   const player = new Player();
   hotkeys(player);
 

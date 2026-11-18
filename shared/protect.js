@@ -135,6 +135,7 @@ export function protectMedia(root = document.body) {
     mark.textContent = [host, user, stamp()].filter(Boolean).join(" · ");
   };
   paintMark();
+  on(document, "dw:user", paintMark);
   const markTimer = window.setInterval(paintMark, MARK_INTERVAL);
   cleanups.push(() => window.clearInterval(markTimer));
 
