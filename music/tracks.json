@@ -24,20 +24,6 @@
         "hash": "5894fa6c9e49777e53c3b620f78911bf30e76e2d11b6c676ea248f0ed5c09e72"
       },
       "locked": true
-    },
-    {
-      "file": "tmp-loop.mp3",
-      "title": "LoopTest",
-      "artist": "Test",
-      "ext": "mp3",
-      "url": "https://darkwaves-panel.profilebio-me.workers.dev/audio/tmp-loop.mp3",
-      "assetId": 764517137,
-      "key": {
-        "salt": "afac96b84bad6d58dbb27d264f6abfce",
-        "iterations": 100000,
-        "hash": "19542e4a30a4b0bc7aded92ad87f4e5bc75b7fd2ad4b13ea20822341cac91c41"
-      },
-      "locked": true
     }
   ]
 }
