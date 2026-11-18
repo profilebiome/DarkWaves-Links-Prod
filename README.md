@@ -67,16 +67,41 @@ confianza: el login viaja en texto plano sin TLS.
 ## Modo estático con cuentas (GitHub Pages)
 
 `shared/accounts.json` publica las cuentas del panel con hash **PBKDF2** (nunca la
-contraseña ni el hash scrypt), y `music/tracks.json` lleva lo mismo para la clave
-de cada pista. Así, sin backend:
+contraseña ni el hash scrypt) y `music/tracks.json` lleva lo mismo para la clave de
+cada pista. Así, sin backend y sin tokens, en el dominio funcionan el login del panel
+y las contraseñas de pista; la biblioteca se muestra en solo lectura. El detalle está
+en la tabla de la sección siguiente.
 
-- El botón *Admin* de la portada y `/admin` aceptan las mismas cuentas (sesión de
-  12 h guardada en el navegador).
-- Cada pista pide su contraseña al pulsarla y el permiso se recuerda 12 h.
-- La biblioteca del panel se muestra en **solo lectura**: subir, editar y gestionar
-  usuarios siguen necesitando el servidor.
+## Dónde funciona cada cosa (sin tokens, sin APIs)
 
-Ambos archivos se regeneran solos cuando el panel guarda cambios, o a mano:
+El panel **no pide ningún token ni API key** en ningún modo. Lo que cambia es quien
+guarda los cambios:
+
+| | Panel en tu PC (`npm run dev`) | Sitio publicado (GitHub Pages) |
+| --- | --- | --- |
+| Entrar con usuario y contraseña | Sí | Sí |
+| Escuchar pistas con su contraseña | Sí | Sí |
+| Subir música | Sí | No |
+| Editar / borrar pistas y claves | Sí | No |
+| Crear / borrar usuarios | Sí | No |
+
+En tu PC hay un servidor (`server.mjs`) que escribe en `data/` y `music/`: por eso
+allí todo funciona sin pedir nada. **GitHub Pages solo entrega archivos**: no puede
+guardar un usuario nuevo ni un MP3, y por eso la biblioteca del panel se muestra en
+solo lectura cuando estás en el dominio.
+
+Para tener el panel completo en la web (igual que en tu PC y sin tokens), el sitio
+tiene que correr en un host con Node — está todo listo en
+[DESPLIEGUE.md](DESPLIEGUE.md) (`render.yaml` o `Dockerfile`).
+
+En GitHub Pages sí funcionan sin servidor, y sin pedir nada:
+
+- El **login** del panel con las cuentas publicadas en `shared/accounts.json`
+  (hash PBKDF2, nunca la contraseña).
+- La **contraseña de cada pista**, verificada en el navegador con la `key` de
+  `music/tracks.json`: sin la clave no se entrega el audio.
+
+Ambos archivos se regeneran solos al guardar desde el servidor, o a mano:
 
 ```bash
 npm run accounts            # shared/accounts.json desde data/users.json
@@ -84,48 +109,9 @@ npm run manifest            # music/tracks.json desde music/ + data/tracks.json
 npm run reset-accounts -- --users "admin:ClaveLarga1,jossgiant:ClaveLarga2" --track-password "ClaveDePistas"
 ```
 
-**Límite:** en un sitio estático esos hashes son públicos (se pueden atacar por
-fuerza bruta offline) y los MP3 del repositorio también. Es una puerta de entrada,
-no seguridad real: usa contraseñas largas y, si el contenido importa, publica el
-host con Node.
-
-## Administrar el sitio publicado (sin servidor)
-
-Hay dos modos, y el panel elige solo:
-
-### A) Proxy en Cloudflare (recomendado): nadie pega tokens
-
-Un Worker gratuito guarda el token de GitHub en el servidor; el navegador solo
-manda usuario y contraseña. Paso a paso en **[INSTALAR-PANEL.md](INSTALAR-PANEL.md)**.
-Cuando `shared/api-endpoint.js` tiene la URL del Worker, el panel muestra
-*“Conectado con tu cuenta · sin token”* y no aparece ninguna casilla de token.
-
-### B) Token en el navegador (por defecto, sin cuentas nuevas)
-
-El panel de `/admin` también funciona en GitHub Pages escribiendo al repositorio con
-un token personal:
-
-1. GitHub → *Settings* → *Developer settings* → **Personal access tokens → Fine-grained tokens**
-   → *Generate new token*.
-2. *Repository access*: **Only select repositories** → `DarkWaves-Links-Prod`.
-3. *Permissions → Repository permissions* → **Contents: Read and write**. Nada más.
-4. En `https://josspreview.profilebio.me/admin`, inicia sesión, pega el token en la
-   tarjeta **Repositorio GitHub** y pulsa *Conectar repositorio*.
-
-Con el repositorio conectado se habilita todo el panel: **subir música** con título,
-artista, álbum, género, año, descripción y contraseña de pista; **editar y borrar**
-pistas; **cambiar claves**; y **crear, borrar o restablecer usuarios** (solo la cuenta
-principal). Cada acción es un commit a `main`, así que GitHub Pages reconstruye el
-sitio en alrededor de un minuto.
-
-- El token se guarda solo en `localStorage` de ese navegador y las peticiones van
-directas a `api.github.com`: no pasa por ningún servidor intermedio. Para revocarlo,
-borra el token en GitHub.
-- Los permisos se aplican igual que en el servidor: la cuenta principal crea y borra
-usuarios; cualquier cuenta sube música y edita pistas.
-- Las cuentas creadas desde aquí viven en `shared/accounts.json` (hash PBKDF2) y las
-claves de pista en `music/tracks.json`. Los dos archivos son públicos: el sitio
-estático no puede esconderlos. Con el host Node, en cambio, todo queda en `data/`.
+**Límite honesto:** en un sitio estático esos hashes son públicos (se pueden atacar
+por fuerza bruta offline) y los MP3 del repositorio también. Es una puerta de entrada,
+no seguridad real.
 
 ## Protección anti-captura
 
