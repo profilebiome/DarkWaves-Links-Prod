@@ -38,6 +38,20 @@
         "hash": "23809d0d4947b9c82be00f8bcb12c3927be2bbef938789eef8ab16cb41b3bf2d"
       },
       "locked": true
+    },
+    {
+      "file": "PruebaWav.wav",
+      "title": "PruebaWav",
+      "artist": "Test",
+      "ext": "wav",
+      "url": "https://github.com/profilebiome/DarkWaves-Links-Prod/releases/download/audio/PruebaWav.wav",
+      "assetId": 764150761,
+      "key": {
+        "salt": "183ffcde41651236fd2381f50e478e83",
+        "iterations": 100000,
+        "hash": "8bcc363258cf0d8bf5f9834a253cc9a56a50644be0e6c6074213a866489a68fd"
+      },
+      "locked": true
     }
   ]
 }
