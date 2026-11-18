@@ -54,7 +54,8 @@ async function resolveIdentity() {
 
 function runGit(args) {
   return new Promise((resolve) => {
-    const child = spawn('git', args, { cwd: ROOT });
+    // safe.directory: en el host el repo puede ser de otro usuario.
+    const child = spawn('git', ['-c', 'safe.directory=*', ...args], { cwd: ROOT });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (chunk) => { stdout += chunk; });
@@ -80,7 +81,7 @@ async function runSync() {
   const message = syncMessage || 'Panel: actualizar el sitio';
   try {
     const add = await runGit(['add', '-A', 'music', 'shared']);
-    if (add.code !== 0) throw new Error(add.stderr.trim() || 'git add fallo');
+    if (add.code !== 0) throw new Error((add.stderr || add.stdout || 'git add fallo').trim());
 
     const who = await resolveIdentity();
     const commit = await runGit([
@@ -89,9 +90,10 @@ async function runSync() {
       'commit', '-m', message,
     ]);
     if (commit.code !== 0) {
-      const nothing = /nothing to commit|no changes added/i.test(commit.stdout + commit.stderr);
-      lastSync = { at: Date.now(), ok: nothing ? true : false, message: nothing ? 'Sin cambios pendientes' : commit.stderr.trim() };
-      if (!nothing) throw new Error(commit.stderr.trim() || 'git commit fallo');
+      const detail = `${commit.stdout}\n${commit.stderr}`.trim();
+      const nothing = /nothing to commit|no changes added/i.test(detail);
+      lastSync = { at: Date.now(), ok: nothing ? true : false, message: nothing ? 'Sin cambios pendientes' : detail };
+      if (!nothing) throw new Error(detail || 'git commit fallo');
       return;
     }
 
@@ -102,7 +104,7 @@ async function runSync() {
       ? ['-c', `http.extraheader=AUTHORIZATION: basic ${Buffer.from(`x-access-token:${gitToken}`).toString('base64')}`]
       : [];
     const push = await runGit([...auth, 'push', 'origin', 'HEAD:main']);
-    if (push.code !== 0) throw new Error(push.stderr.trim() || 'git push fallo');
+    if (push.code !== 0) throw new Error((push.stderr || push.stdout || 'git push fallo').trim());
 
     lastSync = { at: Date.now(), ok: true, message };
     console.log(`  ↳ Publicado en GitHub: ${message}`);
