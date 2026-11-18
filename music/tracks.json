@@ -24,6 +24,20 @@
         "hash": "5894fa6c9e49777e53c3b620f78911bf30e76e2d11b6c676ea248f0ed5c09e72"
       },
       "locked": true
+    },
+    {
+      "file": "Prueba_Grande.mp3",
+      "title": "Prueba Grande",
+      "artist": "Test",
+      "ext": "mp3",
+      "url": "https://github.com/profilebiome/DarkWaves-Links-Prod/releases/download/audio/Prueba_Grande.mp3",
+      "assetId": 764117735,
+      "key": {
+        "salt": "d66a2540f498283936b7ff6c5a982db7",
+        "iterations": 100000,
+        "hash": "774e55c011f4bb055bdd20ceaae7d8e8a84cfc3edc9b8c97342b9240ecf1c37d"
+      },
+      "locked": true
     }
   ]
 }
