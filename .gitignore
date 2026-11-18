@@ -16,3 +16,10 @@ cloudflared.exe
 
 # wrangler
 .wrangler/
+
+# Android (build)
+android-app/build/
+android-app/app/build/
+android-app/.gradle/
+android-app/local.properties
+*.apk

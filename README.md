@@ -83,6 +83,21 @@ Y en GitHub: *Settings → Pages → Custom domain* = `josspreview.profilebio.me
 **Enforce HTTPS** activado. El proxy de Cloudflare debe quedar desactivado (nube
 gris) para que GitHub pueda emitir el certificado.
 
+## App Android con bloqueo real de grabación
+
+La web **no puede** impedir que el sistema operativo grabe la pantalla (ningún
+navegador puede). Para tener el comportamiento de Telegram —pantalla en negro al
+capturar o grabar— está el proyecto `android-app/`, que carga el sitio dentro de
+una app y activa `FLAG_SECURE` en la ventana.
+
+El APK lo compila GitHub Actions (`.github/workflows/android.yml`) en cada cambio:
+GitHub → **Actions → Compilar app Android (APK)** → descarga el artefacto
+`DarkWaves-apk` e instálalo en Android (permitir “instalar apps desconocidas”).
+
+- En Android, con la app: capturas y grabadores del sistema graban **negro**.
+- En iPhone no existe ese bloqueo; solo se puede detectar la grabación y tapar.
+- En la web (navegador) no se puede bloquear, solo estorbar.
+
 ## Protección anti-captura
 
 `shared/protect.js` aplica disuasores, no una barrera real:
