@@ -108,9 +108,35 @@ async function runSync() {
   }
 }
 const BUNDLED_MUSIC_DIR = path.join(ROOT, 'music');
+const BUNDLED_DATA_DIR = path.join(ROOT, 'data');
+
+/**
+ * Usa la carpeta pedida (disco persistente) y, si no se puede escribir —por
+ * ejemplo en un plan sin disco— cae a la carpeta del proyecto.
+ */
+function usableDir(preferred, fallback) {
+  for (const dir of [preferred, fallback]) {
+    if (!dir) continue;
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.accessSync(dir, fs.constants.W_OK);
+      return dir;
+    } catch {
+      /* siguiente opción */
+    }
+  }
+  return fallback || preferred;
+}
+
 /* En un host con disco persistente, music/ y data/ se montan fuera del repo. */
-const MUSIC_DIR = path.resolve(process.env.DARKWAVES_MUSIC_DIR || BUNDLED_MUSIC_DIR);
-const DATA_DIR = path.resolve(process.env.DARKWAVES_DATA_DIR || path.join(ROOT, 'data'));
+const MUSIC_DIR = usableDir(
+  process.env.DARKWAVES_MUSIC_DIR ? path.resolve(process.env.DARKWAVES_MUSIC_DIR) : '',
+  BUNDLED_MUSIC_DIR
+);
+const DATA_DIR = usableDir(
+  process.env.DARKWAVES_DATA_DIR ? path.resolve(process.env.DARKWAVES_DATA_DIR) : '',
+  BUNDLED_DATA_DIR
+);
 const ADMIN_FILE = path.join(DATA_DIR, 'admin.json');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const META_FILE = path.join(DATA_DIR, 'tracks.json');
