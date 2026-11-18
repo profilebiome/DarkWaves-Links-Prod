@@ -52,20 +52,6 @@
         "hash": "958fd6e7dbc11ea6ab84c41af0b1f33696e2bba8c9daf50a200089401edc1da9"
       },
       "locked": true
-    },
-    {
-      "file": "PruebaWav.wav",
-      "title": "PruebaWav",
-      "artist": "Test",
-      "ext": "wav",
-      "url": "https://darkwaves-panel.profilebio-me.workers.dev/audio/PruebaWav.wav",
-      "assetId": 764154582,
-      "key": {
-        "salt": "b375ecab05c2ed6aef0f44380d2375da",
-        "iterations": 100000,
-        "hash": "83e0bc1dfb55563785f98de422725f2e1eeae29306fd3bb0fc7a93eab1590941"
-      },
-      "locked": true
     }
   ]
 }
