@@ -1152,10 +1152,42 @@
     }
   });
 
+  window.setInterval(refreshPlaylist, 45000);
   player.addEventListener("locked", (event) => askPassword(event.detail.track));
 
   /* En modo estático, las pistas desbloqueadas se recuerdan 12 h. */
+  /* La playlist se actualiza sola: si subes música desde el panel, aparece
+     aquí en menos de un minuto sin recargar la página. */
+  let playlistSignature = "";
+  async function refreshPlaylist() {
+    if (document.hidden) return;
+    try {
+      const response = await fetch(`music/tracks.json?t=${Date.now()}`, { cache: "no-store" });
+      if (!response.ok) return;
+      const data = await response.json();
+      const list = Array.isArray(data.tracks) ? data.tracks : [];
+      const signature = list.map((track) => `${track.file}:${track.title}`).join("|");
+      if (!signature || signature === playlistSignature) return;
+      playlistSignature = signature;
+
+      const currentId = player.current ? player.current.id : null;
+      const wasPlaying = player.audio && !player.audio.paused;
+      await player.load();
+      if (currentId) {
+        const index = player.tracks.findIndex((track) => track.id === currentId);
+        if (index >= 0) player.index = index;
+      }
+      render();
+      if (wasPlaying && player.current && !player.current.locked) player.playIndex(player.index).catch(() => {});
+    } catch {
+      /* sin conexión: se reintenta en el siguiente ciclo */
+    }
+  }
+
   player.addEventListener("tracks", async (event) => {
+    playlistSignature = (event.detail && event.detail.tracks ? event.detail.tracks : [])
+      .map((track) => `${track.file}:${track.title}`)
+      .join("|");
     const tracks = event.detail && event.detail.tracks ? event.detail.tracks : [];
     const changed = await applyStaticGrants(tracks);
     if (changed) {

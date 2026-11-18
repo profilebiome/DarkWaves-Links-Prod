@@ -322,9 +322,53 @@ async function publicTracks(env) {
   return { list, out };
 }
 
-async function saveTracks(env, tracks, message) {
-  const sorted = [...tracks].sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'es'));
-  await writeJSON(env, TRACKS_PATH, { version: 1, tracks: sorted }, message);
+function sortTracks(tracks) {
+  return [...tracks].sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'es'));
+}
+
+/**
+ * Lee la playlist, aplica el cambio y la guarda de forma segura.
+ *
+ * Clave: se vuelve a leer dentro del reintento y el `sha` del archivo se manda
+ * en el PUT. Si otro proceso (el panel en otro móvil, la Action, etc.) escribió
+ * entre medias, GitHub responde 409 y aquí se repite la operación completa, así
+ * que **no se puede perder un cambio** (antes se sobreescribía la lista vieja).
+ */
+async function mutateTracks(env, mutate, message) {
+  let lastError = null;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    let sha = null;
+    let list = [];
+    try {
+      const file = await gh(env, contentsUrl(env, TRACKS_PATH));
+      if (file && !Array.isArray(file)) {
+        sha = file.sha;
+        const data = JSON.parse(decodeBase64Utf8(file.content));
+        list = Array.isArray(data.tracks) ? data.tracks : [];
+      }
+    } catch (error) {
+      if (error.status !== 404) throw error;
+    }
+
+    const next = sortTracks(await mutate([...list]));
+    const body = {
+      message,
+      content: encodeBase64Utf8(`${JSON.stringify({ version: 1, tracks: next }, null, 2)}
+`),
+      branch: env.BRANCH || 'main',
+    };
+    if (sha) body.sha = sha;
+
+    try {
+      await gh(env, repoUrl(env, `/contents/${TRACKS_PATH}`), { method: 'PUT', body: JSON.stringify(body) });
+      return next;
+    } catch (error) {
+      lastError = error;
+      if (error.status !== 409 && error.status !== 422) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+    }
+  }
+  throw lastError || new Error('No se pudo guardar la playlist');
 }
 
 export default {
@@ -403,12 +447,14 @@ export default {
         if (length > 95 * 1024 * 1024) return json({ error: 'El archivo supera 95 MB' }, 413, headers);
         if (!request.body) return json({ error: 'Falta el archivo de audio' }, 400, headers);
 
-        const { list } = await publicTracks(env);
         let finalName = name;
-        let counter = 2;
-        while (list.some((track) => track.file === finalName)) {
-          finalName = name.replace(/(\.[a-z0-9]+)$/i, ` (${counter})$1`);
-          counter += 1;
+        {
+          const { list } = await publicTracks(env);
+          let counter = 2;
+          while (list.some((track) => track.file === finalName)) {
+            finalName = name.replace(/(\.[a-z0-9]+)$/i, ` (${counter})$1`);
+            counter += 1;
+          }
         }
 
         const ext = (finalName.match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase();
@@ -437,68 +483,95 @@ export default {
           const value = String(params.get(field) || '').trim();
           if (value) entry[field] = value;
         }
-        await saveTracks(env, [...list, entry], `Subir pista: ${finalName}`);
+        await mutateTracks(
+          env,
+          (tracks) => [...tracks.filter((item) => item.file !== entry.file), entry],
+          `Subir pista: ${finalName}`
+        );
         return json({ ok: true, track: entry }, 200, headers);
       }
 
       const trackMatch = pathname.match(/^\/api\/admin\/tracks\/([^/]+)$/);
       if (trackMatch) {
         const wanted = decodeURIComponent(trackMatch[1]);
-        const { list } = await publicTracks(env);
-        let index = -1;
-        for (let position = 0; position < list.length; position += 1) {
-          if ((await trackId(list[position].file)) === wanted) {
-            index = position;
-            break;
-          }
-        }
-        if (index < 0) return json({ error: 'Pista no encontrada' }, 404, headers);
 
         if (request.method === 'PUT' || request.method === 'PATCH') {
           const body = await request.json().catch(() => ({}));
-          const entry = { ...list[index] };
-          for (const field of ['title', 'artist', 'album', 'genre', 'year', 'description']) {
-            if (field in body) {
-              const value = String(body[field] || '').trim();
-              if (value) entry[field] = value;
-              else delete entry[field];
+          const password = typeof body.password === 'string' ? body.password : '';
+          if (password && password.length < 4) {
+            return json({ error: 'La contraseña necesita al menos 4 caracteres' }, 400, headers);
+          }
+          const hashed = password ? await makePassword(password) : null;
+          let found = false;
+
+          await mutateTracks(env, async (tracks) => {
+            let index = -1;
+            for (let position = 0; position < tracks.length; position += 1) {
+              if ((await trackId(tracks[position].file)) === wanted) {
+                index = position;
+                break;
+              }
             }
-          }
-          if (body.clearPassword === true) {
-            delete entry.key;
-            delete entry.locked;
-          } else if (typeof body.password === 'string' && body.password) {
-            if (body.password.length < 4) return json({ error: 'La contraseña necesita al menos 4 caracteres' }, 400, headers);
-            entry.key = await makePassword(body.password);
-            entry.locked = true;
-          }
-          const next = [...list];
-          next[index] = entry;
-          await saveTracks(env, next, `Editar pista: ${entry.file}`);
+            if (index < 0) return tracks;
+            found = true;
+            const entry = { ...tracks[index] };
+            for (const field of ['title', 'artist', 'album', 'genre', 'year', 'description']) {
+              if (field in body) {
+                const value = String(body[field] || '').trim();
+                if (value) entry[field] = value;
+                else delete entry[field];
+              }
+            }
+            if (body.clearPassword === true) {
+              delete entry.key;
+              delete entry.locked;
+            } else if (hashed) {
+              entry.key = hashed;
+              entry.locked = true;
+            }
+            const next = [...tracks];
+            next[index] = entry;
+            return next;
+          }, `Editar pista ${wanted}`);
+
+          if (!found) return json({ error: 'Pista no encontrada' }, 404, headers);
           return json({ ok: true }, 200, headers);
         }
 
         if (request.method === 'DELETE') {
-          const file = list[index].file;
-          const assetId = list[index].assetId;
-          if (assetId) {
+          let removed = null;
+
+          await mutateTracks(env, async (tracks) => {
+            let index = -1;
+            for (let position = 0; position < tracks.length; position += 1) {
+              if ((await trackId(tracks[position].file)) === wanted) {
+                index = position;
+                break;
+              }
+            }
+            if (index < 0) return tracks;
+            removed = tracks[index];
+            return tracks.filter((_, position) => position !== index);
+          }, 'Borrar pista');
+
+          if (!removed) return json({ error: 'Pista no encontrada' }, 404, headers);
+
+          if (removed.assetId) {
             try {
-              await gh(env, repoUrl(env, `/releases/assets/${assetId}`), { method: 'DELETE' });
+              await gh(env, repoUrl(env, `/releases/assets/${removed.assetId}`), { method: 'DELETE' });
             } catch (error) {
               if (error.status !== 404) throw error;
             }
           }
           try {
-            const current = await gh(env, contentsUrl(env, `${MUSIC_DIR}/${file}`));
-            await gh(env, repoUrl(env, `/contents/${MUSIC_DIR}/${encodeURIComponent(file)}`), {
+            const current = await gh(env, contentsUrl(env, `${MUSIC_DIR}/${removed.file}`));
+            await gh(env, repoUrl(env, `/contents/${MUSIC_DIR}/${encodeURIComponent(removed.file)}`), {
               method: 'DELETE',
-              body: JSON.stringify({ message: `Borrar audio: ${file}`, sha: current.sha, branch: env.BRANCH || 'main' }),
+              body: JSON.stringify({ message: `Borrar audio: ${removed.file}`, sha: current.sha, branch: env.BRANCH || 'main' }),
             });
           } catch (error) {
             if (error.status !== 404) throw error;
           }
-          const next = list.filter((track) => track.file !== file);
-          await saveTracks(env, next, `Borrar pista: ${file}`);
           return json({ ok: true }, 200, headers);
         }
       }

@@ -391,7 +391,9 @@
   </header>
 
   <!-- ---------------- Login ---------------- -->
-  <section class="login-wrap" id="login-view">
+  <div class="notice" id="boot-note">Comprobando sesión…</div>
+
+  <section class="login-wrap" id="login-view" hidden>
     <h1>Darkwaves Link Pro · Panel</h1>
     <p class="sub">Acceso privado para subir música, editar sus datos y asignar la contraseña de cada pista.</p>
     <div class="notice" id="server-note" hidden>
@@ -567,10 +569,7 @@
 </dialog>
 
 <script type="module">
-  import {
-    staticLogin, readStaticSession, clearStaticSession, makePasswordRecord, verifyPasswordRecord,
-  } from "/shared/static-auth.js";
-  import { openPending, uploadPageUrl, PENDING_MESSAGE } from "/shared/pending-store.js";
+  import { clearStaticSession, makePasswordRecord, verifyPasswordRecord } from "/shared/static-auth.js";
   import { PANEL_ENDPOINT } from "/shared/api-endpoint.js";
 
   const $ = (selector) => document.querySelector(selector);
@@ -653,7 +652,7 @@
     userPassStatus: $("#user-pass-status"),
   };
 
-  const state = { tracks: [], editing: null, owner: false, me: "", static: false };
+  const state = { tracks: [], editing: null, owner: false, me: "" };
   let sessionChecked = false;
 
   async function api(url, options = {}) {
@@ -712,6 +711,7 @@
   }
 
   function showApp(user, owner) {
+    if (el.bootNote) el.bootNote.hidden = true;
     el.loginView.hidden = true;
     el.appView.hidden = false;
     el.who.textContent = user;
@@ -721,25 +721,24 @@
     state.me = user;
     state.owner = Boolean(owner);
     el.usersCard.hidden = !state.owner;
-    el.staticNote.hidden = !state.static;
+    el.staticNote.hidden = true;
     el.uploadCard.hidden = false;
     el.passCard.hidden = false;
-    // En el sitio publicado el formulario solo abre la página de subida de GitHub:
-    // no se exige elegir archivo ni escribir la contraseña aquí.
-    if (state.static) el.uploadForm.noValidate = true;
+    startAutoRefresh();
   }
 
   function showLogin() {
+    if (el.bootNote) el.bootNote.hidden = true;
     el.loginView.hidden = false;
     el.appView.hidden = true;
     el.who.hidden = true;
     el.logout.hidden = true;
     state.owner = false;
-    state.static = false;
     el.usersCard.hidden = true;
     el.staticNote.hidden = true;
     el.uploadCard.hidden = false;
     el.passCard.hidden = false;
+    startAutoRefresh();
   }
 
   /* ------------------------- sesión ------------------------- */
@@ -772,15 +771,8 @@
         return;
       }
       if (error.status === 404) {
-        // Sin backend (GitHub Pages): la sesión vive en el navegador.
-        const session = await readStaticSession();
-        if (!session) {
-          el.serverNote.hidden = false;
-          return;
-        }
-        state.static = true;
-        showApp(session.user, session.owner);
-        await loadTracks();
+        el.serverNote.hidden = false;
+        showLogin();
         return;
       }
       if (error.message === "Servidor no disponible") el.serverNote.hidden = false;
@@ -829,8 +821,7 @@
         if (!account) throw new Error("Usuario o contraseña incorrectos");
         el.loginPass.value = "";
         setStatus(el.loginStatus, "");
-        state.static = true;
-        showApp(account.user, account.owner);
+            showApp(account.user, account.owner);
         await loadTracks();
         await loadUsers();
         return;
@@ -857,9 +848,8 @@
 
   /* ------------------------- biblioteca ------------------------- */
 
-  async function loadTracks() {
-    if (state.static) return loadStaticTracks();
-    setStatus(el.listStatus, "Cargando…");
+  async function loadTracks(options = {}) {
+    if (!options.silent) setStatus(el.listStatus, "Cargando…");
     try {
       const data = await api("/api/admin/tracks");
       state.tracks = data.tracks || [];
@@ -934,34 +924,23 @@
     }
   }
 
-  /* Modo estático (GitHub Pages): la biblioteca sale de music/tracks.json. */
-  async function loadStaticTracks() {
-    setStatus(el.listStatus, "Cargando…");
-    try {
-      const response = await fetch("music/tracks.json", { cache: "no-store" });
-      if (!response.ok) throw new Error(`No se pudo leer la biblioteca (${response.status})`);
-      const data = await response.json();
-      state.tracks = (Array.isArray(data.tracks) ? data.tracks : []).map((track) => ({
-        id: track.file,
-        file: track.file,
-        title: track.title,
-        artist: track.artist,
-        album: track.album || "",
-        genre: track.genre || "",
-        year: track.year || "",
-        description: track.description || "",
-        ext: track.ext,
-        size: 0,
-        hasPassword: Boolean(track.key),
-      }));
-      renderTracks();
-      setStatus(el.listStatus, "Solo lectura: abre el servidor para editar", "");
-    } catch (error) {
-      setStatus(el.listStatus, error.message, "error");
-    }
-  }
 
-  el.refresh.addEventListener("click", loadTracks);
+  el.refresh.addEventListener("click", () => loadTracks());
+
+  // La lista se refresca sola cada 20 s: si subes o borras desde otro equipo,
+  // aparece aquí sin pulsar "Actualizar lista".
+  let refreshTimer = null;
+  function startAutoRefresh() {
+    if (refreshTimer) return;
+    refreshTimer = window.setInterval(() => {
+      if (document.hidden) return;
+      if (!document.querySelector("#app-view") || document.querySelector("#app-view").hidden) return;
+      loadTracks({ silent: true }).catch(() => {});
+    }, 20000);
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) loadTracks({ silent: true }).catch(() => {});
+  });
 
   /* ------------------------- subida ------------------------- */
 
@@ -1000,15 +979,6 @@
 
   el.uploadForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (state.static) {
-      window.open(uploadPageUrl(), "_blank", "noopener");
-      setStatus(
-        el.uploadStatus,
-        "Se abrió GitHub en la carpeta music/. Si GitHub dice que no tienes permiso, entra en github.com con la cuenta profilebiome (la dueña del repositorio) y vuelve a intentarlo; sin sesión de GitHub no se puede subir un archivo desde la web. Después pulsa Editar en la pista para poner título y clave. Si prefieres un solo clic, usa el panel local (Iniciar-Panel.bat).",
-        "ok"
-      );
-      return;
-    }
     const fileInput = $("#up-file");
     const file = fileInput.files && fileInput.files[0];
     if (!file) return setStatus(el.uploadStatus, "Selecciona un archivo de audio", "error");
@@ -1039,7 +1009,7 @@
     };
 
     try {
-      await uploadWithProgress(
+      const created = await uploadWithProgress(
         formData,
         (ratio) => {
           el.uploadProgress.firstElementChild.style.width = `${Math.round(ratio * 100)}%`;
@@ -1049,7 +1019,26 @@
       );
       setStatus(el.uploadStatus, "Pista subida correctamente", "ok");
       el.uploadForm.reset();
-      await loadTracks();
+
+      // Optimista: se pinta ya, y en segundo plano se sincroniza con el servidor.
+      const track = created && created.track;
+      if (track) {
+        state.tracks.push({
+          id: track.assetId ? String(track.assetId) : `tmp-${Date.now()}`,
+          file: track.file,
+          title: track.title,
+          artist: track.artist,
+          album: track.album || "",
+          genre: track.genre || "",
+          year: track.year || "",
+          description: track.description || "",
+          ext: track.ext,
+          size: 0,
+          hasPassword: true,
+        });
+        renderTracks();
+      }
+      loadTracks({ silent: true }).catch(() => {});
     } catch (error) {
       setStatus(el.uploadStatus, error.message, "error");
     } finally {
@@ -1095,20 +1084,6 @@
     const password = $("#edit-pass").value;
     if (password) body.password = password;
 
-    if (state.static) {
-      // Sin servidor: se prepara el cambio y se confirma en GitHub.
-      try {
-        const payload = { kind: "track", file: state.editing.file || state.editing.id, ...body };
-        delete payload.password;
-        if (password) payload.password = await makePasswordRecord(password);
-        openPending("music/_pending", payload);
-        el.editDialog.close();
-        setStatus(el.listStatus, PENDING_MESSAGE, "ok");
-      } catch (error) {
-        setStatus(el.editStatus, error.message, "error");
-      }
-      return;
-    }
 
     setStatus(el.editStatus, "Guardando…");
     try {
@@ -1126,18 +1101,20 @@
   });
 
   async function removeTrack(track) {
-    const ok = window.confirm(`¿Borrar "${track.title}"? Se elimina el archivo de music/ y no se puede deshacer.`);
+    const ok = window.confirm(`¿Borrar "${track.title}"? Se elimina el audio y no se puede deshacer.`);
     if (!ok) return;
-    if (state.static) {
-      openPending("music/_pending", { kind: "track", file: track.file || track.id, remove: true });
-      setStatus(el.listStatus, PENDING_MESSAGE, "ok");
-      return;
-    }
+    // Optimista: desaparece de la lista al instante.
+    const previous = state.tracks;
+    state.tracks = state.tracks.filter((item) => item.id !== track.id);
+    renderTracks();
+    setStatus(el.listStatus, "Eliminando…");
     try {
       await api(`/api/admin/tracks/${track.id}`, { method: "DELETE" });
-      await loadTracks();
       setStatus(el.listStatus, "Pista eliminada", "ok");
+      loadTracks({ silent: true }).catch(() => {});
     } catch (error) {
+      state.tracks = previous;
+      renderTracks();
       setStatus(el.listStatus, error.message, "error");
     }
   }
@@ -1148,22 +1125,6 @@
     event.preventDefault();
     setStatus(el.passStatus, "Guardando…");
     try {
-      if (state.static) {
-        const accounts = await (await fetch("shared/accounts.json", { cache: "no-store" })).json();
-        const record = accounts && accounts.users ? accounts.users[state.me] : null;
-        if (!record || !(await verifyPasswordRecord(record, el.passCurrent.value))) {
-          throw new Error("La contraseña actual no es correcta");
-        }
-        if (el.passNext.value.length < 4) throw new Error("La contraseña nueva necesita al menos 4 caracteres");
-        openPending("shared/_pending", {
-          kind: "user",
-          user: state.me,
-          password: await makePasswordRecord(el.passNext.value),
-        });
-        el.passForm.reset();
-        setStatus(el.passStatus, PENDING_MESSAGE, "ok");
-        return;
-      }
       await api("/api/admin/password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1234,21 +1195,6 @@
   }
 
   async function loadUsers() {
-    if (state.static) {
-      el.usersCard.hidden = !state.owner;
-      try {
-        const data = await (await fetch("shared/accounts.json", { cache: "no-store" })).json();
-        const list = Object.entries(data.users || {}).map(([user, record]) => ({
-          user,
-          owner: Boolean(record && record.owner),
-          createdAt: "",
-        }));
-        renderUsers(list, state.me);
-      } catch {
-        /* sin datos */
-      }
-      return;
-    }
     if (!state.owner) {
       el.usersCard.hidden = true;
       return;
@@ -1268,21 +1214,6 @@
     event.preventDefault();
     setStatus(el.userStatus, "Creando…");
     try {
-      if (state.static) {
-        const name = el.userName.value.trim().toLowerCase();
-        if (!/^[a-z0-9._-]{3,32}$/.test(name)) {
-          throw new Error("Usuario no válido: 3-32 caracteres, minúsculas, números, . _ -");
-        }
-        if (el.userPass.value.length < 4) throw new Error("La contraseña necesita al menos 4 caracteres");
-        openPending("shared/_pending", {
-          kind: "user",
-          user: name,
-          password: await makePasswordRecord(el.userPass.value),
-        });
-        el.userForm.reset();
-        setStatus(el.userStatus, PENDING_MESSAGE, "ok");
-        return;
-      }
       await api("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1313,17 +1244,6 @@
     if (!editingUser) return;
     setStatus(el.userPassStatus, "Guardando…");
     try {
-      if (state.static) {
-        if (el.userPassNew.value.length < 4) throw new Error("La contraseña necesita al menos 4 caracteres");
-        openPending("shared/_pending", {
-          kind: "user",
-          user: editingUser,
-          password: await makePasswordRecord(el.userPassNew.value),
-        });
-        el.userPassDialog.close();
-        setStatus(el.userStatus, PENDING_MESSAGE, "ok");
-        return;
-      }
       await api(`/api/admin/users/${encodeURIComponent(editingUser)}/password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1338,11 +1258,6 @@
 
   async function removeUser(user) {
     if (!window.confirm(`¿Borrar el usuario "${user}"? Ya no podrá entrar al panel.`)) return;
-    if (state.static) {
-      openPending("shared/_pending", { kind: "user", user, remove: true });
-      setStatus(el.userStatus, PENDING_MESSAGE, "ok");
-      return;
-    }
     try {
       await api(`/api/admin/users/${encodeURIComponent(user)}`, { method: "DELETE" });
       setStatus(el.userStatus, "Usuario borrado", "ok");

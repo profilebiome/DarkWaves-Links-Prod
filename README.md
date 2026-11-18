@@ -85,18 +85,37 @@ gris) para que GitHub pueda emitir el certificado.
 
 ## App Android con bloqueo real de grabación
 
-La web **no puede** impedir que el sistema operativo grabe la pantalla (ningún
-navegador puede). Para tener el comportamiento de Telegram —pantalla en negro al
-capturar o grabar— está el proyecto `android-app/`, que carga el sitio dentro de
-una app y activa `FLAG_SECURE` en la ventana.
+La web no puede impedir que el sistema grabe la pantalla. Para eso está
+`android-app/`: carga el sitio dentro de una app y activa `FLAG_SECURE`, así que
+el sistema graba negro y bloquea capturas (como Telegram en chats secretos).
 
-El APK lo compila GitHub Actions (`.github/workflows/android.yml`) en cada cambio:
-GitHub → **Actions → Compilar app Android (APK)** → descarga el artefacto
-`DarkWaves-apk` e instálalo en Android (permitir “instalar apps desconocidas”).
+El APK lo compila GitHub Actions (`.github/workflows/android.yml`) y se publica en
+la raíz del sitio para descargarlo: **https://josspreview.profilebio.me/DarkWaves.apk**
 
-- En Android, con la app: capturas y grabadores del sistema graban **negro**.
-- En iPhone no existe ese bloqueo; solo se puede detectar la grabación y tapar.
-- En la web (navegador) no se puede bloquear, solo estorbar.
+## Estructura del proyecto
+
+```
+index.html / admin.html     reproductor y panel (GitHub Pages)
+server.mjs                  servidor local: panel completo y streaming firmado
+worker/panel.js             backend del panel en Cloudflare (subidas, usuarios, claves)
+wrangler.toml               configuración del Worker
+shared/                     player, protección, autenticación sin servidor, estilos
+music/                      audio del repositorio y music/tracks.json
+tools/                      manifest, cuentas publicadas y reinicio de credenciales
+android-app/                app Android (FLAG_SECURE + selector de archivos)
+DarkWaves.apk               APK publicada, descargable desde el dominio
+Iniciar-Panel.bat           arranca el panel local y abre el navegador
+```
+
+### Cómo se guardan los cambios (sin tokens en el navegador)
+
+```
+navegador/app ──usuario+contraseña──▶ Worker (Cloudflare) ──token──▶ GitHub
+```
+
+- El Worker sirve el audio en `/audio/<archivo>` con CORS y `Range`.
+- Las subidas van en streaming a un Release (`tag: audio`), sin base64 ni límites de CPU.
+- La playlist se guarda con `sha` + reintento: dos cambios a la vez **no se pisan**.
 
 ## Protección anti-captura
 
