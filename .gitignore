@@ -3,5 +3,8 @@ node_modules/
 *.log
 .freebuff/
 
+# Datos privados del panel de administración (credenciales y contraseñas de pistas)
+data/
+
 .DS_Store
 Thumbs.db

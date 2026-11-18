@@ -3,35 +3,42 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DarkWaves — Reproductor musical</title>
-<meta name="description" content="Reproductor musical local: copia tus temas a music/ y escúchalos en streaming, sin descargas.">
-<meta name="theme-color" content="#04060c">
+<title>DrakoTheProducer Player</title>
+<meta name="description" content="DrakoTheProducer Player: reproductor musical en streaming.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237dd3fc' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M9 18V6.4l10-2v11.2'/%3E%3Ccircle cx='6.5' cy='18' r='2.5'/%3E%3Ccircle cx='16.5' cy='15.6' r='2.5'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/shared/base.css">
+<meta name="theme-color" content="#000000">
 <style>
   :root {
-    --bg: #04060c;
-    --panel: #060d19;
-    --line: rgba(120, 165, 235, 0.16);
+    /* Negro sólido como lienzo, azul como única luz, blanco como única tinta. */
+    --bg: #000;
     --blue: #2f6feb;
-    --cyan: #8bd4ff;
-    --text: #eef4ff;
-    --muted: #7d92b2;
+    --blue-light: #4d8dff;
+    --blue-soft: #8bd4ff;
+    --blue-veil: rgba(47, 111, 235, 0.10);
+    --hair: rgba(77, 141, 255, 0.26);
+    --hair-soft: rgba(77, 141, 255, 0.13);
+    --text: #fff;
+    --ink-soft: rgba(255, 255, 255, 0.82);
+    --dim: rgba(255, 255, 255, 0.64);
+    --mute: rgba(255, 255, 255, 0.55);
+    --faint: rgba(255, 255, 255, 0.48);
+    --blue-panel: rgba(47, 111, 235, 0.15);
     --mono: "Consolas", "SFMono-Regular", ui-monospace, monospace;
   }
 
   body {
     min-height: 100vh;
-    background:
-      linear-gradient(90deg, rgba(96, 165, 250, 0.05) 1px, transparent 1px) 0 0 / 25% 100%,
-      radial-gradient(900px 620px at 90% 0%, rgba(23, 55, 120, 0.4), transparent 65%),
-      var(--bg);
+    background-color: var(--bg);
+    background-image: none;
+    color: var(--text);
   }
 
   .shell {
     max-width: 1440px;
     margin: 0 auto;
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
     padding: 24px 38px 26px;
@@ -42,35 +49,36 @@
     align-items: center;
     gap: 18px;
     padding-bottom: 18px;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--hair);
     font-family: var(--mono);
     font-size: 10.5px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--muted);
+    color: var(--faint);
   }
   .logo {
     display: flex;
     align-items: center;
     gap: 10px;
-    color: #eaf3ff;
+    color: var(--text);
     letter-spacing: 0.26em;
     font-weight: 700;
   }
-  .logo svg { width: 18px; height: 18px; color: #8bd4ff; }
+  .logo svg { width: 18px; height: 18px; color: var(--blue-soft); }
+  header .sep { color: var(--blue); }
   header nav { margin-left: auto; display: flex; gap: 16px; align-items: center; }
   header .slot {
     display: inline-flex;
     align-items: center;
     gap: 7px;
     padding: 6px 10px;
-    border: 1px solid rgba(139, 212, 255, 0.25);
-    color: #a5dcff;
+    border: 1px solid var(--hair);
+    color: var(--blue-soft);
   }
   header .slot i {
     width: 4px; height: 4px;
-    background: #8bd4ff;
-    box-shadow: 0 0 8px #8bd4ff;
+    background: var(--blue-soft);
+    box-shadow: 0 0 8px var(--blue-soft);
     border-radius: 50%;
   }
 
@@ -98,27 +106,28 @@
     font-size: 10px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: #6a82a3;
+    color: var(--faint);
   }
   .index-row .big {
-    font-size: clamp(44px, 6vw, 72px);
+    font-size: clamp(48px, 6.4vw, 84px);
     line-height: 0.8;
     letter-spacing: -0.04em;
     color: transparent;
-    -webkit-text-stroke: 1px rgba(130, 180, 255, 0.45);
+    -webkit-text-stroke: 1px rgba(139, 212, 255, 0.55);
     font-family: "Segoe UI", system-ui, sans-serif;
     font-weight: 300;
   }
 
-  .title-block { margin-top: 22px; }
+  .title-block { margin-top: 24px; }
   .title-block h1 {
     margin: 0;
-    font-size: clamp(36px, 5.4vw, 72px);
+    font-size: clamp(38px, 5.2vw, 76px);
     font-weight: 600;
     line-height: 0.94;
-    letter-spacing: -0.05em;
-    color: #f4f8ff;
+    letter-spacing: -0.048em;
+    color: var(--text);
     text-wrap: balance;
+    overflow-wrap: anywhere;
   }
   .title-block .artist {
     display: flex;
@@ -129,35 +138,73 @@
     font-size: 11px;
     letter-spacing: 0.24em;
     text-transform: uppercase;
-    color: #92a9c8;
+    color: var(--blue-soft);
   }
   .title-block .artist::before {
     content: "";
     width: 34px; height: 1px;
-    background: linear-gradient(90deg, #2f6feb, transparent);
+    background: var(--blue);
+  }
+  .title-block .desc {
+    margin: 16px 0 0;
+    max-width: 58ch;
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--dim);
+    overflow-wrap: anywhere;
   }
 
+  /* ---------- la onda: protagonista, siempre azul ---------- */
   .wave {
     position: relative;
-    margin: auto 0 0;
-    padding: 26px 0 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    height: clamp(150px, 34vh, 340px);
+    margin-top: auto;
+    padding: 26px 0 10px;
   }
   .wave canvas {
     width: 100%;
-    height: 128px;
+    flex: 1 1 auto;
+    min-height: 112px;
     display: block;
     cursor: pointer;
+    touch-action: manipulation;
   }
   .wave .legend {
     display: flex;
-    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
     font-family: var(--mono);
-    font-size: 9.5px;
+    font-size: 10px;
     letter-spacing: 0.16em;
-    color: #607595;
+    color: var(--faint);
     text-transform: uppercase;
-    padding-top: 6px;
+    padding-top: 8px;
   }
+  .wave .legend .state {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--blue-soft);
+  }
+  .wave .legend .state::before {
+    content: "";
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 10px currentColor;
+  }
+  .mode-chip {
+    padding: 3px 7px;
+    border: 1px solid var(--hair);
+    color: var(--dim);
+    font-size: 8.5px;
+    letter-spacing: 0.14em;
+  }
+  .mode-chip:not(:empty) { color: var(--blue-soft); border-color: rgba(139, 212, 255, 0.32); }
 
   .times {
     display: flex;
@@ -165,60 +212,74 @@
     gap: 14px;
     font-family: var(--mono);
     font-size: 11px;
-    color: #8fa6c6;
+    color: var(--dim);
     font-variant-numeric: tabular-nums;
-    padding-top: 8px;
+    padding-top: 10px;
   }
-  .times span { width: 40px; flex: none; }
+  .times span { width: 42px; flex: none; }
   .times span:last-child { text-align: right; }
-  .times input { flex: 1; height: 16px; }
+  .times input { flex: 1; height: 18px; }
   .times input[type="range"]::-webkit-slider-runnable-track {
-    height: 1px;
-    background: linear-gradient(90deg, #7cc6ff calc(var(--p, 0) * 1%), rgba(120, 165, 235, 0.2) calc(var(--p, 0) * 1%));
+    height: 2px;
+    background: linear-gradient(90deg, var(--blue-light) calc(var(--p, 0) * 1%), rgba(77, 141, 255, 0.20) calc(var(--p, 0) * 1%));
   }
   .times input[type="range"]::-moz-range-track {
-    height: 1px;
-    background: linear-gradient(90deg, #7cc6ff calc(var(--p, 0) * 1%), rgba(120, 165, 235, 0.2) calc(var(--p, 0) * 1%));
+    height: 2px;
+    background: linear-gradient(90deg, var(--blue-light) calc(var(--p, 0) * 1%), rgba(77, 141, 255, 0.20) calc(var(--p, 0) * 1%));
   }
-  .times input[type="range"]::-webkit-slider-thumb { width: 8px; height: 8px; margin-top: -3.5px; }
+  .times input[type="range"]::-webkit-slider-thumb { width: 9px; height: 9px; margin-top: -3.5px; }
 
   .transport {
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 20px 0 4px;
-    border-top: 1px solid var(--line);
-    margin-top: 12px;
+    border-top: 1px solid var(--hair);
+    margin-top: 14px;
   }
   .btn {
     display: grid;
     place-items: center;
     width: 44px; height: 44px;
-    border: 1px solid var(--line);
-    color: #a3bad8;
-    transition: all 0.18s ease;
+    border: 1px solid var(--hair);
+    color: var(--dim);
+    transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
   }
   .btn svg { width: 18px; height: 18px; }
-  .btn:hover { color: #fff; border-color: rgba(120, 180, 255, 0.5); background: rgba(25, 55, 110, 0.3); }
-  .btn.active { color: #8bd4ff; border-color: rgba(139, 212, 255, 0.5); background: rgba(8, 47, 73, 0.3); }
+  .btn:hover {
+    color: #fff;
+    border-color: var(--blue-light);
+    background: var(--blue-veil);
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn.active {
+    color: var(--blue-soft);
+    border-color: var(--blue-light);
+    background: var(--blue-veil);
+    box-shadow: inset 0 0 0 1px rgba(77, 141, 255, 0.35);
+  }
 
   .main-play {
     display: flex;
     align-items: center;
     gap: 13px;
-    height: 44px;
-    padding: 0 22px;
+    height: 48px;
+    padding: 0 24px;
     margin-left: 6px;
-    color: #eef7ff;
-    background: #2f6feb;
-    border: 1px solid rgba(160, 210, 255, 0.35);
+    color: #fff;
+    background: var(--blue);
+    border: 1px solid rgba(139, 212, 255, 0.45);
     font-family: var(--mono);
     font-size: 10.5px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    transition: background 0.18s ease;
+    transition: background 0.16s ease, box-shadow 0.16s ease;
   }
-  .main-play:hover { background: #3c7df7; }
+  .main-play:hover {
+    background: var(--blue-light);
+    box-shadow: 0 0 0 3px rgba(47, 111, 235, 0.18);
+  }
+  .main-play:active { transform: translateY(1px); }
   .main-play svg { width: 16px; height: 16px; }
 
   .vol {
@@ -226,39 +287,49 @@
     align-items: center;
     gap: 8px;
     margin-left: auto;
-    color: #7f95b4;
+    color: var(--dim);
   }
   .vol svg { width: 14px; height: 14px; }
-  .vol input { width: 86px; height: 16px; }
+  .vol input { width: 90px; height: 18px; }
+  .vol input[type="range"]::-webkit-slider-runnable-track {
+    height: 2px;
+    background: linear-gradient(90deg, var(--blue-light) calc(var(--p, 85) * 1%), rgba(77, 141, 255, 0.20) calc(var(--p, 85) * 1%));
+  }
+  .vol input[type="range"]::-moz-range-track {
+    height: 2px;
+    background: linear-gradient(90deg, var(--blue-light) calc(var(--p, 85) * 1%), rgba(77, 141, 255, 0.20) calc(var(--p, 85) * 1%));
+  }
 
   .meta-strip {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    border-top: 1px solid var(--line);
-    margin-top: 18px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    border-top: 1px solid var(--hair);
+    margin-top: 20px;
   }
   .meta-strip div {
-    padding: 12px 14px 0 0;
+    padding: 12px 16px 0 0;
     font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 0.16em;
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #5f7595;
+    color: var(--faint);
   }
   .meta-strip span {
     display: block;
-    margin-top: 5px;
+    margin-top: 6px;
     font-family: "Segoe UI", system-ui, sans-serif;
     font-size: 12.5px;
     letter-spacing: 0.02em;
     text-transform: none;
-    color: #cfe0f5;
+    color: var(--text);
+    overflow-wrap: anywhere;
   }
 
-  /* ---------- Right : library ---------- */
+  /* ---------- derecha: la playlist, en azul ---------- */
   .right {
-    border-left: 1px solid var(--line);
-    padding-left: 30px;
+    border: 1px solid var(--hair);
+    background: var(--blue-panel);
+    padding: 20px 22px 16px;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -268,7 +339,7 @@
     align-items: baseline;
     gap: 10px;
     padding-bottom: 14px;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--hair);
   }
   .right-head h2 {
     margin: 0;
@@ -276,29 +347,32 @@
     letter-spacing: 0.26em;
     text-transform: uppercase;
     font-weight: 600;
-    color: #b9cde6;
+    color: var(--text);
     font-family: var(--mono);
   }
   .right-head .n {
     margin-left: auto;
     font-family: var(--mono);
     font-size: 9.5px;
-    color: #647c9e;
+    color: var(--blue-soft);
     letter-spacing: 0.12em;
   }
   .right-head .bar {
     width: 3px; height: 16px;
-    background: linear-gradient(180deg, #8bd4ff, #2f6feb);
+    background: var(--blue-soft);
+    box-shadow: 0 0 12px rgba(139, 212, 255, 0.6);
   }
 
   .filter {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(120, 165, 235, 0.09);
-    color: #6b83a4;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--hair-soft);
+    color: var(--faint);
+    transition: border-color 0.16s ease, color 0.16s ease;
   }
+  .filter:focus-within { border-color: var(--blue-light); color: var(--blue-soft); }
   .filter svg { width: 14px; height: 14px; }
   .filter input {
     flex: 1;
@@ -308,19 +382,21 @@
     font-family: var(--mono);
     font-size: 11px;
     letter-spacing: 0.04em;
+    color: var(--text);
   }
-  .filter input::placeholder { color: #5c7292; text-transform: uppercase; font-size: 9.5px; letter-spacing: 0.14em; }
+  .filter input::placeholder { color: var(--mute); text-transform: uppercase; font-size: 9.5px; letter-spacing: 0.14em; }
 
   .list {
-    flex: 1;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
-    padding: 8px 6px 8px 0;
+    padding: 8px 0;
     max-height: min(62vh, 560px);
     scrollbar-width: thin;
-    scrollbar-color: rgba(96, 165, 250, 0.3) transparent;
+    scrollbar-color: rgba(77, 141, 255, 0.45) transparent;
   }
   .list::-webkit-scrollbar { width: 6px; }
-  .list::-webkit-scrollbar-thumb { background: rgba(96, 165, 250, 0.28); }
+  .list::-webkit-scrollbar-thumb { background: rgba(77, 141, 255, 0.4); }
 
   .item {
     width: 100%;
@@ -330,32 +406,25 @@
     gap: 10px;
     padding: 12px 10px;
     text-align: left;
-    border-bottom: 1px solid rgba(120, 165, 235, 0.07);
+    border-bottom: 1px solid var(--hair-soft);
     position: relative;
-    transition: background 0.16s ease, padding-left 0.16s ease;
+    transition: background 0.16s ease, box-shadow 0.16s ease;
   }
-  .item:hover { background: rgba(29, 64, 122, 0.18); padding-left: 14px; }
-  .item.active { background: linear-gradient(90deg, rgba(47, 111, 235, 0.18), transparent); }
-  .item.active::before {
-    content: "";
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 2px;
-    background: #8bd4ff;
-    box-shadow: 0 0 12px #8bd4ff;
-  }
+  .item:hover { background: var(--blue-veil); box-shadow: inset 2px 0 0 var(--blue-light); }
+  .item.active { background: var(--blue); box-shadow: inset 2px 0 0 var(--blue-soft); }
   .item .i {
     font-family: var(--mono);
     font-size: 10px;
-    color: #5c7292;
+    color: var(--blue-light);
     font-variant-numeric: tabular-nums;
   }
-  .item.active .i { color: #8bd4ff; }
+  .item.active .i { color: var(--text); }
   .item .txt { min-width: 0; }
   .item .txt strong {
     display: block;
     font-size: 13px;
     font-weight: 500;
+    color: var(--text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -364,79 +433,256 @@
     display: block;
     margin-top: 3px;
     font-size: 10.5px;
-    color: #7e94b4;
+    color: var(--dim);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .item.active .txt small { color: var(--ink-soft); }
   .item .i-ext {
     font-family: var(--mono);
-    font-size: 8.5px;
+    font-size: 9px;
     letter-spacing: 0.1em;
-    color: #6a82a3;
+    color: var(--mute);
     padding: 3px 5px;
-    border: 1px solid rgba(120, 165, 235, 0.16);
+    border: 1px solid var(--hair);
   }
-  .item.active .i-ext { color: #9ddcff; border-color: rgba(139, 212, 255, 0.4); }
+  .item.active .i-ext { color: #fff; border-color: var(--ink-soft); }
+  .item .txt small .lock {
+    display: inline-block;
+    margin-right: 5px;
+    vertical-align: -1px;
+    color: var(--blue-soft);
+  }
+  .item .txt small .lock svg { width: 10px; height: 10px; }
+  .item.active .txt small .lock { color: #fff; }
 
   .list-empty {
     padding: 34px 16px;
     font-family: var(--mono);
     font-size: 10.5px;
     line-height: 2;
-    color: #6d84a4;
+    color: var(--dim);
     letter-spacing: 0.04em;
   }
-  .list-empty code { color: #a9dcff; }
+  .list-empty code { color: var(--blue-soft); }
 
-  .right-foot {
-    border-top: 1px solid var(--line);
-    padding-top: 12px;
-    display: flex;
-    gap: 10px;
-    align-items: center;
+  body.dw-protected {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  body.dw-protected input,
+  body.dw-protected textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  canvas { -webkit-user-drag: none; }
+
+  /* ---------- diálogos ---------- */
+  dialog.unlock,
+  dialog.admin-login {
+    border: 1px solid var(--hair);
+    background: var(--bg);
+    color: var(--text);
+  }
+  dialog.unlock {
+    width: min(430px, calc(100vw - 32px));
+    padding: 26px 24px;
+  }
+  dialog.unlock::backdrop,
+  dialog.admin-login::backdrop {
+    background: rgba(0, 0, 0, 0.78);
+    backdrop-filter: blur(3px);
+  }
+  dialog.unlock h2 {
+    margin: 0 0 7px;
+    font-size: 22px;
+    letter-spacing: -0.03em;
+    font-weight: 600;
+  }
+  dialog.unlock .u-meta {
+    margin: 0;
     font-family: var(--mono);
-    font-size: 8.5px;
-    letter-spacing: 0.14em;
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: #5b7090;
+    color: var(--blue-soft);
+  }
+  dialog.unlock input,
+  dialog.admin-login input {
+    width: 100%;
+    padding: 12px;
+    background: #000;
+    border: 1px solid var(--hair);
+    color: var(--text);
+    font-size: 13px;
+    transition: border-color 0.16s ease;
+  }
+  dialog.unlock input { margin-top: 18px; }
+  dialog.unlock input:focus,
+  dialog.admin-login input:focus { outline: none; border-color: var(--blue-light); }
+  dialog.unlock input::placeholder,
+  dialog.admin-login input::placeholder { color: var(--faint); }
+  dialog.unlock .u-status {
+    min-height: 15px;
+    margin: 10px 0 0;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--blue-soft);
+  }
+  dialog.unlock .u-actions { display: flex; gap: 10px; margin-top: 4px; }
+  dialog.unlock .u-actions button {
+    flex: 1;
+    padding: 12px 14px;
+    border: 1px solid var(--hair);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text);
+    transition: background 0.16s ease, border-color 0.16s ease;
+  }
+  dialog.unlock .u-actions button:hover { border-color: var(--blue-light); background: var(--blue-veil); }
+  dialog.unlock .u-actions button[type="submit"] {
+    background: var(--blue);
+    border-color: rgba(139, 212, 255, 0.45);
+    color: #fff;
+  }
+  dialog.unlock .u-actions button[type="submit"]:hover { background: var(--blue-light); }
+
+  header nav a { transition: color 0.16s ease; }
+  header nav a:hover { color: #fff; }
+
+  .admin-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 11px;
+    border: 1px solid var(--hair);
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+  }
+  .admin-trigger svg { width: 12px; height: 12px; }
+  .admin-trigger:hover {
+    color: #fff;
+    border-color: var(--blue-light);
+    background: var(--blue-veil);
+  }
+
+  dialog.admin-login {
+    position: fixed;
+    inset: 64px 20px auto auto;
+    margin: 0;
+    width: min(330px, calc(100vw - 32px));
+    padding: 18px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9);
+  }
+  .al-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--blue-soft);
+  }
+  .al-head button { color: var(--dim); font-size: 13px; }
+  .al-head button:hover { color: #fff; }
+  dialog.admin-login input { margin-bottom: 9px; }
+  dialog.admin-login .al-status {
+    min-height: 14px;
+    margin: 2px 0 10px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    line-height: 1.5;
+    color: var(--blue-soft);
+  }
+  dialog.admin-login .al-submit {
+    width: 100%;
+    padding: 11px;
+    background: var(--blue);
+    border: 1px solid rgba(139, 212, 255, 0.45);
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    transition: background 0.16s ease;
+  }
+  dialog.admin-login .al-submit:hover { background: var(--blue-light); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+
+  @media print {
+    html, body { display: none !important; }
+  }
+
+  /* Escritorio con altura suficiente: la columna azul llega al borde inferior y la
+     lista usa todo el alto. Si el contenido crece (títulos o descripciones largas),
+     la página desplaza en vez de recortar el transporte. */
+  @media (min-width: 1081px) and (min-height: 720px) {
+    .left { min-height: 0; }
+    .right { min-height: 0; }
+    .list { max-height: none; }
   }
 
   @media (max-width: 1080px) {
-    main { grid-template-columns: 1fr; }
+    main { grid-template-columns: 1fr; align-content: start; }
     .left { padding-right: 0; }
     .right {
-      border-left: 0;
-      border-top: 1px solid var(--line);
-      padding: 18px 0 0;
-      margin-top: 22px;
+      border: 0;
+      border-top: 1px solid var(--hair);
+      padding: 18px 18px 14px;
+      margin-top: 24px;
+      margin-left: -38px;
+      margin-right: -38px;
     }
-    .list { max-height: 320px; }
-    .wave canvas { height: 92px; }
+    .list { max-height: 340px; }
+    .wave { max-height: 300px; }
     .meta-strip { grid-template-columns: repeat(2, 1fr); gap: 4px 0; }
   }
   @media (max-width: 640px) {
     .shell { padding: 16px 16px 20px; }
-    header { font-size: 9px; flex-wrap: wrap; gap: 10px; }
-    .title-block h1 { font-size: 40px; }
-    .transport { flex-wrap: wrap; gap: 8px; }
-    .vol { margin-left: 0; width: 100%; }
-    .vol input { flex: 1; }
+    header { font-size: 8.5px; flex-wrap: wrap; gap: 10px; }
+    header .slot { padding: 5px 7px; }
+    .admin-trigger { padding: 6px 8px; }
+    .title-block { margin-top: 18px; }
+    .title-block h1 { font-size: 38px; }
+    .transport { flex-wrap: wrap; gap: 8px; padding-top: 16px; }
+    .vol { order: 3; margin-left: 0; width: 100%; }
+    .vol input { flex: 1; width: auto; }
     .btn { width: 40px; height: 40px; }
-    .main-play { margin-left: 0; }
-    .meta-strip div { padding-right: 8px; }
-    .wave canvas { height: 78px; }
+    .main-play { margin-left: 0; flex: 1; justify-content: center; padding: 0 14px; }
+    /* La biblioteca entra en el primer pantallazo: la onda y los metadatos ceden alto. */
+    .meta-strip div { padding: 9px 12px 0 0; }
+    .wave { height: clamp(120px, 22vh, 170px); min-height: 0; max-height: none; margin-top: 16px; padding-top: 10px; }
+    .wave canvas { min-height: 72px; }
+    .right { margin-left: -16px; margin-right: -16px; margin-top: 18px; }
+    .list { max-height: 300px; }
   }
 </style>
 </head>
 <body>
 <div class="shell">
   <header>
-    <span class="logo"><span data-icon="music"></span>DARKWAVES</span>
-    <span style="color:#3b5273">/</span>
-    <span>CONSOLE</span>
+    <span class="logo"><span data-icon="music"></span>DRAKOTHEPRODUCER</span>
+    <span class="sep">/</span>
+    <span>PLAYER</span>
     <nav>
       <span class="slot"><i></i>music/</span>
+      <button class="admin-trigger" id="admin-open" type="button" title="Acceso de administrador">
+        <span data-icon="lock"></span><span>Admin</span>
+      </button>
     </nav>
   </header>
 
@@ -451,11 +697,16 @@
       <div class="title-block">
         <h1 id="title">Carga tu música</h1>
         <p class="artist" id="artist">Copia tus archivos a la carpeta music/</p>
+        <p class="desc" id="desc" hidden></p>
       </div>
 
       <div class="wave">
         <canvas id="wave" aria-label="Progreso de la pista"></canvas>
-        <div class="legend"><span>Waveform</span><span id="wave-state">Pausado</span></div>
+        <div class="legend">
+          <span>Onda</span>
+          <span class="mode-chip" id="m-mode">Normal</span>
+          <span class="state" id="wave-state">Pausado</span>
+        </div>
       </div>
 
       <div class="times">
@@ -481,8 +732,9 @@
       <div class="meta-strip">
         <div>Título<span id="m-title">—</span></div>
         <div>Artista<span id="m-artist">—</span></div>
+        <div>Álbum<span id="m-album">—</span></div>
+        <div>Año<span id="m-year">—</span></div>
         <div>Formato<span id="m-format">—</span></div>
-        <div>Modo<span id="m-mode">Normal</span></div>
       </div>
     </section>
 
@@ -502,19 +754,44 @@
         &gt; copia archivos a <code>music/</code><br>
         &gt; recarga esta página
       </div>
-      <div class="right-foot">
-        <span>Solo escucha · sin descarga</span>
-      </div>
     </section>
   </main>
 </div>
+
+<dialog class="unlock" id="unlock">
+  <h2 id="unlock-title">Pista protegida</h2>
+  <p class="u-meta" id="unlock-artist"></p>
+  <form id="unlock-form">
+    <input id="unlock-pass" type="password" placeholder="Contraseña de la pista" autocomplete="off" required>
+    <p class="u-status" id="unlock-status"></p>
+    <div class="u-actions">
+      <button type="button" id="unlock-cancel">Cancelar</button>
+      <button type="submit">Desbloquear</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="admin-login" id="admin-login">
+  <form id="admin-login-form" autocomplete="off">
+    <div class="al-head">
+      <span>Acceso administrador</span>
+      <button type="button" id="admin-login-close" aria-label="Cerrar">✕</button>
+    </div>
+    <input id="admin-user" type="text" placeholder="Usuario" autocomplete="username" required>
+    <input id="admin-pass" type="password" placeholder="Contraseña" autocomplete="current-password" required>
+    <p class="al-status" id="admin-login-status"></p>
+    <button class="al-submit" type="submit">Entrar al panel</button>
+  </form>
+</dialog>
 
 <script type="module">
   import {
     Player, mountIcons, icons, formatTime, artFor, initialsOf, hotkeys, escapeHtml,
   } from "/shared/player.js";
+  import { protectMedia } from "/shared/protect.js";
 
   mountIcons();
+  protectMedia();
   const player = new Player();
   hotkeys(player);
 
@@ -526,12 +803,16 @@
     play: $("#play"), playLabel: $("#play-label"), prev: $("#prev"), next: $("#next"),
     shuffle: $("#shuffle"), repeat: $("#repeat"), volume: $("#volume"),
     list: $("#list"), count: $("#count"), empty: $("#list-empty"), search: $("#search"),
-    mTitle: $("#m-title"), mArtist: $("#m-artist"), mFormat: $("#m-format"), mMode: $("#m-mode"),
+    mTitle: $("#m-title"), mArtist: $("#m-artist"), mAlbum: $("#m-album"), mYear: $("#m-year"),
+    mFormat: $("#m-format"), mMode: $("#m-mode"), desc: $("#desc"),
   };
 
   let query = "";
   let waveValues = [];
   let progress = 0;
+  let reveal = 1;
+  let revealFrame = 0;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function seededValues(seed, count) {
     let h = 2166136261;
@@ -546,9 +827,15 @@
       t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
-    return Array.from({ length: count }, (_, i) => {
+    const raw = Array.from({ length: count }, (_, i) => {
       const envelope = 0.35 + 0.65 * Math.sin((Math.PI * (i + 1)) / (count + 1)) ** 0.55;
       return Math.max(0.08, Math.min(1, (0.22 + rand() * 0.95) * envelope));
+    });
+    /* Suavizado: una onda se lee como una silueta continua, no como picos sueltos. */
+    return raw.map((value, i) => {
+      const prev = raw[i - 1] ?? value;
+      const next = raw[i + 1] ?? value;
+      return Math.max(0.08, Math.min(0.94, prev * 0.28 + value * 0.44 + next * 0.28));
     });
   }
 
@@ -567,20 +854,44 @@
     const barWidth = (canvas.width - gap * (count - 1)) / count;
     const played = progress * canvas.width;
     const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-    gradient.addColorStop(0, "rgba(120, 190, 255, 0.95)");
-    gradient.addColorStop(1, "rgba(143, 212, 255, 0.95)");
+    gradient.addColorStop(0, "#4d8dff");
+    gradient.addColorStop(1, "#8bd4ff");
 
     for (let i = 0; i < count; i += 1) {
       const value = waveValues[i] || 0.3;
-      const h = Math.max(2 * dpr, value * (canvas.height - 8 * dpr));
+      const h = Math.max(2 * dpr, value * (canvas.height - 8 * dpr) * reveal);
       const x = i * (barWidth + gap);
       const y = (canvas.height - h) / 2;
-      ctx.fillStyle = x < played ? gradient : "rgba(96, 140, 210, 0.22)";
+      ctx.fillStyle = x < played ? gradient : "rgba(77, 141, 255, 0.62)";
       ctx.fillRect(x, y, Math.max(barWidth, 1), h);
     }
 
-    ctx.fillStyle = "rgba(180, 225, 255, 0.75)";
-    ctx.fillRect(Math.min(played, canvas.width - 1), 0, 1, canvas.height);
+    if (played > 0) {
+      ctx.fillStyle = "#ffffff";
+      ctx.shadowColor = "rgba(77, 141, 255, 0.95)";
+      ctx.shadowBlur = 12 * dpr;
+      ctx.fillRect(Math.min(played, canvas.width - 2 * dpr), 0, 2 * dpr, canvas.height);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  /* Las barras de la onda suben al cambiar de pista. */
+  function revealWave() {
+    cancelAnimationFrame(revealFrame);
+    if (reduceMotion) {
+      reveal = 1;
+      drawWave();
+      return;
+    }
+    reveal = 0;
+    const start = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / 420);
+      reveal = 1 - (1 - t) ** 3;
+      drawWave();
+      if (t < 1) revealFrame = requestAnimationFrame(step);
+    };
+    revealFrame = requestAnimationFrame(step);
   }
 
   const observer = new ResizeObserver(drawWave);
@@ -589,7 +900,7 @@
   function newWave(track) {
     waveValues = seededValues(`${track.title}|${track.artist}`, 108);
     progress = 0;
-    drawWave();
+    revealWave();
   }
 
   function render() {
@@ -600,15 +911,24 @@
     el.list.innerHTML = rows
       .map((track) => {
         const active = track.index === player.index;
+        const subtitle = [track.artist, [track.album, track.year].filter(Boolean).join(" · ")]
+          .filter(Boolean)
+          .map(escapeHtml)
+          .join(" · ");
+        const lock = track.locked ? `<span class="lock" title="Pista protegida con contraseña">${icons.lock}</span>` : "";
         return `<button class="item${active ? " active" : ""}" data-index="${track.index}">
           <span class="i">${active ? ">>" : String(track.index + 1).padStart(2, "0")}</span>
-          <span class="txt"><strong>${escapeHtml(track.title)}</strong><small>${escapeHtml(track.artist)}</small></span>
-          <span class="i-ext">${escapeHtml(String(track.ext || "").toUpperCase())}</span>
+          <span class="txt"><strong>${escapeHtml(track.title)}</strong><small>${lock}${subtitle}</small></span>
+          <span class="i-ext">${track.locked ? "CLAVE" : escapeHtml(String(track.ext || "").toUpperCase())}</span>
         </button>`;
       })
       .join("");
 
-    el.count.textContent = `${String(player.tracks.length).padStart(2, "0")} pistas`;
+    if (!rows.length && player.tracks.length) {
+      el.list.innerHTML = `<div class="list-empty">// sin coincidencias<br>&gt; prueba con otro título o artista</div>`;
+    }
+
+    el.count.textContent = `${String(player.tracks.length).padStart(2, "0")} ${player.tracks.length === 1 ? "pista" : "pistas"}`;
     el.total.textContent = String(player.tracks.length).padStart(2, "0");
     el.empty.hidden = player.tracks.length > 0;
   }
@@ -621,7 +941,14 @@
     el.format.textContent = String(track.ext || "audio").toUpperCase();
     el.mTitle.textContent = track.title;
     el.mArtist.textContent = track.artist;
+    el.mAlbum.textContent = track.album || "—";
+    el.mYear.textContent = track.year || "—";
     el.mFormat.textContent = String(track.ext || "audio").toUpperCase();
+    el.mTitle.title = track.title;
+    el.mArtist.title = track.artist;
+    el.mAlbum.title = track.album || "";
+    el.desc.textContent = track.description || "";
+    el.desc.hidden = !track.description;
     newWave(track);
     render();
   }
@@ -638,6 +965,8 @@
   function paintToggles() {
     el.shuffle.classList.toggle("active", player.shuffle);
     el.repeat.classList.toggle("active", player.repeat !== "off");
+    el.shuffle.setAttribute("aria-pressed", String(player.shuffle));
+    el.repeat.setAttribute("aria-pressed", String(player.repeat !== "off"));
     el.mMode.textContent =
       [player.shuffle ? "Aleatorio" : "", player.repeat === "one" ? "Repetir 1" : player.repeat === "all" ? "Repetir todo" : ""]
         .filter(Boolean).join(" · ") || "Normal";
@@ -653,7 +982,7 @@
     const item = event.target.closest(".item");
     if (!item) return;
     const index = Number(item.dataset.index);
-    if (index === player.index && player.audio.src) player.toggle();
+    if (index === player.index && player.loaded) player.toggle();
     else player.playIndex(index);
   });
 
@@ -664,7 +993,7 @@
 
   el.play.addEventListener("click", () => {
     if (!player.tracks.length) return;
-    if (!player.audio.src) player.playIndex(Math.max(player.index, 0));
+    if (!player.loaded) player.playIndex(Math.max(player.index, 0));
     else player.toggle();
   });
   el.prev.addEventListener("click", () => player.prev());
@@ -694,9 +1023,139 @@
     el.volume.value = String(Math.round(event.detail.volume * 100));
   });
 
+  /* ---------- pistas protegidas con contraseña ---------- */
+  const unlock = {
+    dialog: $("#unlock"),
+    title: $("#unlock-title"),
+    artist: $("#unlock-artist"),
+    form: $("#unlock-form"),
+    pass: $("#unlock-pass"),
+    status: $("#unlock-status"),
+    cancel: $("#unlock-cancel"),
+  };
+  let pending = null;
+
+  function askPassword(track) {
+    pending = track;
+    unlock.title.textContent = track.title;
+    unlock.artist.textContent = [track.artist, track.album].filter(Boolean).join(" · ");
+    unlock.pass.value = "";
+    unlock.status.textContent = "";
+    if (!unlock.dialog.open) unlock.dialog.showModal();
+    setTimeout(() => unlock.pass.focus(), 40);
+  }
+
+  unlock.cancel.addEventListener("click", () => unlock.dialog.close());
+
+  unlock.dialog.addEventListener("close", () => {
+    pending = null;
+    unlock.pass.value = "";
+  });
+
+  unlock.form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!pending) return;
+    unlock.status.textContent = "Comprobando…";
+    try {
+      const response = await fetch("/api/unlock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: pending.id, password: unlock.pass.value }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "No se pudo desbloquear la pista");
+      const track = player.tracks.find((item) => item.id === pending.id);
+      if (!track) throw new Error("Pista no encontrada");
+      track.url = data.url;
+      track.locked = false;
+      unlock.pass.value = "";
+      unlock.dialog.close();
+      pending = null;
+      player.playIndex(player.tracks.indexOf(track));
+      render();
+    } catch (error) {
+      unlock.status.textContent = error.message;
+    }
+  });
+
+  player.addEventListener("locked", (event) => askPassword(event.detail.track));
+
+  /* Si el enlace firmado caduca o el archivo cambia, se renueva solo una vez. */
+  const recovered = new Set();
+
+  player.addEventListener("state", (event) => {
+    if (event.detail.playing && player.current) recovered.delete(player.current.id);
+  });
+
+  player.addEventListener("error", async () => {
+    const track = player.current;
+    if (!track) return;
+    if (recovered.has(track.id)) {
+      el.waveState.textContent = "Audio no disponible";
+      return;
+    }
+    recovered.add(track.id);
+    try {
+      await player.load();
+      const fresh = player.tracks.find((item) => item.id === track.id);
+      if (!fresh) throw new Error("La pista ya no existe");
+      if (!fresh.url) {
+        askPassword(fresh);
+        return;
+      }
+      await player.playIndex(player.tracks.indexOf(fresh));
+    } catch {
+      el.waveState.textContent = "Audio no disponible";
+    }
+  });
+
+  /* ---------- acceso de administrador en la esquina ---------- */
+  const adminUi = {
+    open: $("#admin-open"),
+    dialog: $("#admin-login"),
+    close: $("#admin-login-close"),
+    form: $("#admin-login-form"),
+    user: $("#admin-user"),
+    pass: $("#admin-pass"),
+    status: $("#admin-login-status"),
+  };
+
+  adminUi.open.addEventListener("click", () => {
+    adminUi.status.textContent = "";
+    if (!adminUi.dialog.open) adminUi.dialog.showModal();
+    adminUi.user.focus();
+  });
+
+  adminUi.close.addEventListener("click", () => adminUi.dialog.close());
+
+  adminUi.form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    adminUi.status.textContent = "Comprobando…";
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user: adminUi.user.value.trim(), password: adminUi.pass.value }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 404) {
+        throw new Error("El panel solo funciona con el servidor (npm run dev)");
+      }
+      if (!response.ok) throw new Error(data.error || "No se pudo iniciar sesión");
+      adminUi.pass.value = "";
+      window.location.href = "/admin";
+    } catch (error) {
+      adminUi.status.textContent = error.message;
+    }
+  });
+
   el.volume.value = String(Math.round(player.audio.volume * 100));
+  const paintVolume = () => el.volume.style.setProperty("--p", el.volume.value);
+  el.volume.addEventListener("input", paintVolume);
+  paintVolume();
   paintToggles();
   waveValues = seededValues("darkwaves", 108);
+  reveal = 1;
   drawWave();
 
   try {

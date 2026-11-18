@@ -10,10 +10,19 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MUSIC_DIR = path.join(ROOT, 'music');
 const OUTPUT = path.join(MUSIC_DIR, 'tracks.json');
+// Metadatos guardados por el panel de administración (títulos, artista, álbum…).
+const META_FILE = path.join(ROOT, 'data', 'tracks.json');
 
 const AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.ogg', '.oga', '.m4a', '.aac', '.flac', '.opus', '.webm']);
 
 const cleanName = (value) => value.replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+let meta = {};
+try {
+  meta = JSON.parse(fs.readFileSync(META_FILE, 'utf8')).tracks || {};
+} catch {
+  meta = {};
+}
 
 const entries = fs.existsSync(MUSIC_DIR)
   ? fs.readdirSync(MUSIC_DIR, { withFileTypes: true }).filter((entry) => entry.isFile())
@@ -31,12 +40,18 @@ const tracks = entries
       artist = cleanName(parts[0]);
       title = cleanName(parts.slice(1).join(' - '));
     }
-    return {
+    const record = meta[entry.name] || {};
+    const track = {
       file: entry.name,
-      title: title || base,
-      artist,
+      title: record.title || title || base,
+      artist: record.artist || artist,
       ext: ext.slice(1),
     };
+    if (record.album) track.album = record.album;
+    if (record.genre) track.genre = record.genre;
+    if (record.year) track.year = record.year;
+    if (record.description) track.description = record.description;
+    return track;
   })
   .sort((a, b) => a.title.localeCompare(b.title, 'es'));
 

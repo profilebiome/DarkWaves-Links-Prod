@@ -1,0 +1,1056 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DrakoTheProducer Player — Panel de administración</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237dd3fc' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M9 18V6.4l10-2v11.2'/%3E%3Ccircle cx='6.5' cy='18' r='2.5'/%3E%3Ccircle cx='16.5' cy='15.6' r='2.5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/base.css">
+<style>
+  :root {
+    /* Mismo sistema que el reproductor: negro sólido, azul como luz, blanco como tinta. */
+    --bg: #000;
+    --blue: #2f6feb;
+    --blue-light: #4d8dff;
+    --blue-soft: #8bd4ff;
+    --blue-veil: rgba(47, 111, 235, 0.10);
+    --hair: rgba(77, 141, 255, 0.26);
+    --hair-soft: rgba(77, 141, 255, 0.13);
+    --text: #fff;
+    --dim: rgba(255, 255, 255, 0.62);
+    --faint: rgba(255, 255, 255, 0.40);
+    --danger: #ff6b81;
+    --ok: #4ade80;
+    --mono: "Consolas", "SFMono-Regular", ui-monospace, monospace;
+  }
+
+  body {
+    min-height: 100vh;
+    background-color: var(--bg);
+    background-image: none;
+    color: var(--text);
+  }
+
+  .shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 26px 28px 60px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--hair);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--text);
+    letter-spacing: 0.26em;
+    font-weight: 700;
+  }
+  .logo svg { width: 18px; height: 18px; color: var(--blue-soft); }
+  header .sep { color: var(--blue); }
+  header nav { margin-left: auto; display: flex; gap: 14px; align-items: center; }
+  header a { color: var(--dim); transition: color 0.16s ease; }
+  header a:hover { color: var(--text); }
+  header .who { color: var(--blue-soft); }
+
+  .ghost {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 8px 12px;
+    border: 1px solid var(--hair);
+    color: var(--dim);
+    transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+  }
+  .ghost:hover { border-color: var(--blue-light); color: #fff; background: var(--blue-veil); }
+
+  h1 {
+    margin: 34px 0 8px;
+    font-size: clamp(28px, 4vw, 42px);
+    letter-spacing: -0.04em;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .sub {
+    margin: 0 0 26px;
+    color: var(--dim);
+    font-size: 13.5px;
+    line-height: 1.7;
+  }
+  .sub code,
+  .card code,
+  .empty code {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    color: var(--blue-soft);
+  }
+
+  .card {
+    background: var(--bg);
+    border: 1px solid var(--hair);
+    padding: 22px 22px 24px;
+    margin-bottom: 22px;
+  }
+  .card-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--hair-soft);
+  }
+  .card-head h2 {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--text);
+    font-weight: 600;
+  }
+  .card-head .bar {
+    width: 3px;
+    height: 15px;
+    background: var(--blue-soft);
+    box-shadow: 0 0 12px rgba(139, 212, 255, 0.55);
+  }
+  .card-head small {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--faint);
+    text-transform: uppercase;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .grid .wide { grid-column: 1 / -1; }
+
+  label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.52);
+  }
+  label span { display: block; margin-bottom: 7px; }
+
+  input[type="text"],
+  input[type="password"],
+  input[type="number"],
+  input[type="file"],
+  textarea {
+    width: 100%;
+    padding: 11px 12px;
+    background: #000;
+    border: 1px solid var(--hair);
+    color: var(--text);
+    font-size: 13px;
+    transition: border-color 0.16s ease;
+  }
+  input::placeholder,
+  textarea::placeholder { color: var(--faint); }
+  input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--blue-light);
+  }
+  input[type="file"] { padding: 9px 12px; color: var(--dim); }
+  input[type="file"]::file-selector-button {
+    margin-right: 12px;
+    padding: 6px 10px;
+    background: none;
+    border: 1px solid var(--hair);
+    color: var(--blue-soft);
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  input[type="file"]::file-selector-button:hover { border-color: var(--blue-light); color: #fff; }
+  textarea { resize: vertical; min-height: 74px; }
+  label.check {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-top: 14px;
+    text-transform: none;
+    letter-spacing: 0.02em;
+    font-size: 12px;
+    color: var(--dim);
+  }
+  label.check input { width: auto; }
+
+  .hint {
+    margin: 8px 0 14px;
+    font-size: 11px;
+    color: var(--faint);
+    line-height: 1.6;
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+  }
+
+  .primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 22px;
+    background: var(--blue);
+    border: 1px solid rgba(139, 212, 255, 0.45);
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    transition: background 0.16s ease, box-shadow 0.16s ease;
+  }
+  .primary:hover { background: var(--blue-light); box-shadow: 0 0 0 3px rgba(47, 111, 235, 0.18); }
+  .primary:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+
+  .danger {
+    color: #ffb4c0;
+    border: 1px solid rgba(255, 107, 129, 0.35);
+    padding: 7px 10px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    transition: color 0.16s ease, border-color 0.16s ease;
+  }
+  .danger:hover { border-color: rgba(255, 107, 129, 0.75); color: #fff; background: rgba(255, 107, 129, 0.12); }
+
+  .status {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    line-height: 1.6;
+    color: var(--dim);
+  }
+  .status.ok { color: var(--ok); }
+  .status.error { color: var(--danger); }
+
+  .progress {
+    height: 2px;
+    background: var(--hair-soft);
+    margin-top: 16px;
+    overflow: hidden;
+    display: none;
+  }
+  .progress.on { display: block; }
+  .progress i {
+    display: block;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--blue), var(--blue-soft));
+    transition: width 0.15s linear;
+  }
+
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.46);
+    font-weight: 500;
+    padding: 0 10px 10px 0;
+    border-bottom: 1px solid var(--hair);
+    white-space: nowrap;
+  }
+  td {
+    padding: 12px 10px 12px 0;
+    border-bottom: 1px solid var(--hair-soft);
+    vertical-align: middle;
+  }
+  td .t { display: block; color: var(--text); }
+  td .f {
+    display: block;
+    margin-top: 3px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    color: var(--faint);
+    word-break: break-all;
+  }
+  .tag {
+    display: inline-block;
+    padding: 3px 7px;
+    border: 1px solid var(--hair);
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+  .tag.on { color: var(--blue-soft); border-color: rgba(139, 212, 255, 0.45); }
+  .row-actions { display: flex; gap: 7px; justify-content: flex-end; }
+
+  .empty {
+    padding: 28px 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--dim);
+    line-height: 2;
+  }
+
+  dialog {
+    background: var(--bg);
+    border: 1px solid var(--hair);
+    color: var(--text);
+    padding: 0;
+    width: min(560px, calc(100vw - 32px));
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9);
+  }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.88); backdrop-filter: blur(4px); }
+  dialog .card { margin: 0; border: 0; }
+  dialog .close {
+    margin-left: auto;
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 14px;
+  }
+  dialog .close:hover { color: #fff; }
+
+  .login-wrap {
+    max-width: 430px;
+    margin: 8vh auto 0;
+  }
+  .login-wrap .grid { grid-template-columns: 1fr; }
+  .login-wrap .actions { align-items: center; }
+  .login-wrap .primary { width: 100%; justify-content: center; }
+  .notice {
+    border: 1px solid rgba(255, 107, 129, 0.35);
+    padding: 14px 16px;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: #ffb4c0;
+    margin-bottom: 18px;
+  }
+
+  [hidden] { display: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+
+  @media (max-width: 760px) {
+    .shell { padding: 18px 16px 44px; }
+    .grid { grid-template-columns: 1fr; }
+    .table-wrap { overflow-x: auto; }
+    table { min-width: 620px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <span class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6.4l10-2v11.2"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="15.6" r="2.5"/></svg>
+      DRAKOTHEPRODUCER
+    </span>
+    <span class="sep">/</span>
+    <span>ADMIN</span>
+    <nav>
+      <span class="who" id="who" hidden></span>
+      <a href="/">Reproductor</a>
+      <button class="ghost" id="logout" type="button" hidden>Cerrar sesión</button>
+    </nav>
+  </header>
+
+  <!-- ---------------- Login ---------------- -->
+  <section class="login-wrap" id="login-view">
+    <h1>Panel de administración</h1>
+    <p class="sub">Acceso privado para subir música, editar sus datos y asignar la contraseña de cada pista.</p>
+    <div class="notice" id="server-note" hidden>
+      No se pudo contactar con el servidor. Este panel solo funciona con <code>npm run dev</code>
+      (no en GitHub Pages).
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="bar"></span><h2>Iniciar sesión</h2></div>
+      <form id="login-form" autocomplete="off">
+        <div class="grid">
+          <label><span>Usuario</span><input id="login-user" type="text" name="user" autocomplete="username" required></label>
+          <label><span>Contraseña</span><input id="login-pass" type="password" name="password" autocomplete="current-password" required></label>
+        </div>
+        <div class="actions">
+          <button class="primary" type="submit">Entrar</button>
+          <span class="status" id="login-status"></span>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ---------------- Panel ---------------- -->
+  <section id="app-view" hidden>
+    <h1>Panel de administración</h1>
+    <p class="sub">Sube pistas a <code>music/</code>, define título, artista, álbum y todos sus datos, y protege cada track con su propia contraseña.</p>
+
+    <div class="card">
+      <div class="card-head"><span class="bar"></span><h2>Subir música</h2><small id="upload-name">MP3 · WAV · FLAC · M4A · AAC · OGG · OPUS · WEBM</small></div>
+      <form id="upload-form">
+        <div class="grid">
+          <label class="wide"><span>Archivo de audio</span><input id="up-file" type="file" name="file" accept=".mp3,.wav,.flac,.m4a,.aac,.ogg,.oga,.opus,.webm,audio/*" required></label>
+          <label><span>Título</span><input id="up-title" type="text" name="title" maxlength="300" placeholder="Nombre de la canción"></label>
+          <label><span>Artista</span><input id="up-artist" type="text" name="artist" maxlength="300" placeholder="Nombre del artista"></label>
+          <label><span>Álbum</span><input id="up-album" type="text" name="album" maxlength="300" placeholder="Álbum o EP"></label>
+          <label><span>Género</span><input id="up-genre" type="text" name="genre" maxlength="300" placeholder="Género musical"></label>
+          <label><span>Año</span><input id="up-year" type="text" name="year" maxlength="20" placeholder="2026"></label>
+          <label><span>Contraseña de la pista</span><input id="up-pass" type="text" name="password" maxlength="200" minlength="4" placeholder="Obligatoria · mínimo 4 caracteres" autocomplete="new-password" required></label>
+          <label class="wide"><span>Descripción</span><textarea id="up-desc" name="description" maxlength="600" placeholder="Notas, letra, créditos…"></textarea></label>
+        </div>
+        <p class="hint">La contraseña es obligatoria: la página es pública, pero el audio de cada pista solo se entrega a quien escriba su clave.</p>
+        <div class="actions">
+          <button class="primary" type="submit" id="upload-btn">Subir pista</button>
+          <span class="status" id="upload-status"></span>
+        </div>
+        <div class="progress" id="upload-progress"><i></i></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="bar"></span><h2>Biblioteca</h2><small id="track-count">0 pistas</small></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Pista</th>
+              <th>Artista</th>
+              <th>Álbum</th>
+              <th>Año</th>
+              <th>Clave</th>
+              <th>Tamaño</th>
+              <th style="text-align:right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="rows-empty" hidden>
+        // todavía no hay pistas<br>
+        &gt; sube un archivo de audio arriba
+      </div>
+      <div class="actions">
+        <button class="ghost" type="button" id="refresh">Actualizar lista</button>
+        <span class="status" id="list-status"></span>
+      </div>
+    </div>
+
+    <div class="card" id="users-card" hidden>
+      <div class="card-head"><span class="bar"></span><h2>Usuarios del panel</h2><small id="user-count">0</small></div>
+      <p class="hint">Cada usuario entra con su propio nombre y contraseña y tiene los mismos permisos: subir música, editar pistas y asignar la contraseña de cada audio.</p>
+      <form id="user-form" autocomplete="off">
+        <div class="grid">
+          <label><span>Nuevo usuario</span><input id="user-name" type="text" maxlength="32" pattern="[a-z0-9._\-]{3,32}" placeholder="ej. maria" autocomplete="off" required></label>
+          <label><span>Contraseña</span><input id="user-pass" type="password" minlength="6" maxlength="200" autocomplete="new-password" required></label>
+        </div>
+        <div class="actions">
+          <button class="primary" type="submit">Crear usuario</button>
+          <span class="status" id="user-status"></span>
+        </div>
+      </form>
+      <div class="table-wrap" style="margin-top:18px">
+        <table>
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Rol</th>
+              <th>Creado</th>
+              <th style="text-align:right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="user-rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="bar"></span><h2>Tu contraseña</h2></div>
+      <p class="hint">Cambia la contraseña con la que entras al panel.</p>
+      <form id="pass-form" autocomplete="off">
+        <div class="grid">
+          <label><span>Contraseña actual</span><input id="pass-current" type="password" autocomplete="current-password" required></label>
+          <label><span>Nueva contraseña</span><input id="pass-next" type="password" autocomplete="new-password" minlength="6" required></label>
+        </div>
+        <div class="actions">
+          <button class="primary" type="submit">Cambiar contraseña</button>
+          <span class="status" id="pass-status"></span>
+        </div>
+      </form>
+    </div>
+  </section>
+</div>
+
+<dialog id="edit-dialog">
+  <form class="card" id="edit-form">
+    <div class="card-head">
+      <span class="bar"></span><h2>Editar pista</h2>
+      <button class="close" type="button" id="edit-close" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="grid">
+      <label class="wide"><span>Archivo</span><input id="edit-file" type="text" disabled></label>
+      <label><span>Título</span><input id="edit-title" type="text" maxlength="300"></label>
+      <label><span>Artista</span><input id="edit-artist" type="text" maxlength="300"></label>
+      <label><span>Álbum</span><input id="edit-album" type="text" maxlength="300"></label>
+      <label><span>Género</span><input id="edit-genre" type="text" maxlength="300"></label>
+      <label><span>Año</span><input id="edit-year" type="text" maxlength="20"></label>
+      <label><span>Nueva contraseña</span><input id="edit-pass" type="text" maxlength="200" minlength="4" placeholder="Vacío = no cambiar" autocomplete="new-password"></label>
+      <label class="wide"><span>Descripción</span><textarea id="edit-desc" maxlength="600"></textarea></label>
+    </div>
+    <label class="check">
+      <input id="edit-clear" type="checkbox"> Quitar contraseña (la pista dejará de escucharse hasta poner otra)
+    </label>
+    <div class="actions">
+      <button class="primary" type="submit">Guardar cambios</button>
+      <span class="status" id="edit-status"></span>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="user-pass-dialog">
+  <form class="card" id="user-pass-form">
+    <div class="card-head">
+      <span class="bar"></span><h2>Cambiar contraseña</h2>
+      <button class="close" type="button" id="user-pass-close" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="grid">
+      <label class="wide"><span>Usuario</span><input id="user-pass-name" type="text" disabled></label>
+      <label class="wide"><span>Nueva contraseña</span><input id="user-pass-new" type="password" minlength="6" maxlength="200" autocomplete="new-password" required></label>
+    </div>
+    <div class="actions">
+      <button class="primary" type="submit">Guardar contraseña</button>
+      <span class="status" id="user-pass-status"></span>
+    </div>
+  </form>
+</dialog>
+
+<script type="module">
+  const $ = (selector) => document.querySelector(selector);
+
+  const el = {
+    loginView: $("#login-view"),
+    appView: $("#app-view"),
+    who: $("#who"),
+    logout: $("#logout"),
+    serverNote: $("#server-note"),
+    loginForm: $("#login-form"),
+    loginUser: $("#login-user"),
+    loginPass: $("#login-pass"),
+    loginStatus: $("#login-status"),
+    uploadForm: $("#upload-form"),
+    uploadBtn: $("#upload-btn"),
+    uploadStatus: $("#upload-status"),
+    uploadProgress: $("#upload-progress"),
+    rows: $("#rows"),
+    rowsEmpty: $("#rows-empty"),
+    trackCount: $("#track-count"),
+    listStatus: $("#list-status"),
+    refresh: $("#refresh"),
+    passForm: $("#pass-form"),
+    passCurrent: $("#pass-current"),
+    passNext: $("#pass-next"),
+    passStatus: $("#pass-status"),
+    editDialog: $("#edit-dialog"),
+    editForm: $("#edit-form"),
+    editClose: $("#edit-close"),
+    editStatus: $("#edit-status"),
+    usersCard: $("#users-card"),
+    userForm: $("#user-form"),
+    userName: $("#user-name"),
+    userPass: $("#user-pass"),
+    userStatus: $("#user-status"),
+    userRows: $("#user-rows"),
+    userCount: $("#user-count"),
+    userPassDialog: $("#user-pass-dialog"),
+    userPassForm: $("#user-pass-form"),
+    userPassName: $("#user-pass-name"),
+    userPassNew: $("#user-pass-new"),
+    userPassClose: $("#user-pass-close"),
+    userPassStatus: $("#user-pass-status"),
+  };
+
+  const state = { tracks: [], editing: null, owner: false, me: "" };
+  let sessionChecked = false;
+
+  async function api(url, options = {}) {
+    let response;
+    try {
+      response = await fetch(url, { credentials: "same-origin", cache: "no-store", ...options });
+    } catch {
+      el.serverNote.hidden = false;
+      throw new Error("Servidor no disponible");
+    }
+    let data = {};
+    const text = await response.text();
+    if (text) {
+      try { data = JSON.parse(text); } catch { data = {}; }
+    }
+    if (!response.ok) {
+      const error = new Error(data.error || `Error ${response.status}`);
+      error.status = response.status;
+      throw error;
+    }
+    return data;
+  }
+
+  function bytes(value) {
+    const size = Number(value) || 0;
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(0)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function setStatus(target, message, type = "") {
+    target.textContent = message || "";
+    target.className = `status ${type}`.trim();
+  }
+
+  function showApp(user, owner) {
+    el.loginView.hidden = true;
+    el.appView.hidden = false;
+    el.who.textContent = user;
+    el.who.hidden = false;
+    el.logout.hidden = false;
+    el.serverNote.hidden = true;
+    state.me = user;
+    state.owner = Boolean(owner);
+    el.usersCard.hidden = !state.owner;
+  }
+
+  function showLogin() {
+    el.loginView.hidden = false;
+    el.appView.hidden = true;
+    el.who.hidden = true;
+    el.logout.hidden = true;
+    state.owner = false;
+    el.usersCard.hidden = true;
+  }
+
+  /* ------------------------- sesión ------------------------- */
+
+  async function checkSession() {
+    try {
+      const data = await api("/api/admin/session");
+      showApp(data.user, data.owner);
+      await loadTracks();
+      await loadUsers();
+    } catch (error) {
+      if (error.status === 401) showLogin();
+      else if (error.status === 404) el.serverNote.hidden = false;
+      else showLogin();
+    }
+  }
+
+  el.loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setStatus(el.loginStatus, "Comprobando…");
+    try {
+      const data = await api("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user: el.loginUser.value.trim(), password: el.loginPass.value }),
+      });
+      el.loginPass.value = "";
+      setStatus(el.loginStatus, "");
+      showApp(data.user, data.owner);
+      await loadTracks();
+      await loadUsers();
+    } catch (error) {
+      setStatus(el.loginStatus, error.message, "error");
+    }
+  });
+
+  el.logout.addEventListener("click", async () => {
+    try { await api("/api/admin/logout", { method: "POST" }); } catch { /* nada */ }
+    state.tracks = [];
+    showLogin();
+  });
+
+  /* ------------------------- biblioteca ------------------------- */
+
+  async function loadTracks() {
+    setStatus(el.listStatus, "Cargando…");
+    try {
+      const data = await api("/api/admin/tracks");
+      state.tracks = data.tracks || [];
+      renderTracks();
+      setStatus(el.listStatus, "");
+    } catch (error) {
+      if (error.status === 401) {
+        state.tracks = [];
+        showLogin();
+        return;
+      }
+      setStatus(el.listStatus, error.message, "error");
+    }
+  }
+
+  function renderTracks() {
+    el.rows.textContent = "";
+    el.trackCount.textContent = `${state.tracks.length} pista${state.tracks.length === 1 ? "" : "s"}`;
+    el.rowsEmpty.hidden = state.tracks.length > 0;
+
+    for (const track of state.tracks) {
+      const tr = document.createElement("tr");
+
+      const cellTitle = document.createElement("td");
+      const strong = document.createElement("span");
+      strong.className = "t";
+      strong.textContent = track.title || "(sin título)";
+      const file = document.createElement("span");
+      file.className = "f";
+      file.textContent = track.file || "";
+      cellTitle.append(strong, file);
+
+      const cellArtist = document.createElement("td");
+      cellArtist.textContent = track.artist || "—";
+
+      const cellAlbum = document.createElement("td");
+      cellAlbum.textContent = track.album || "—";
+
+      const cellYear = document.createElement("td");
+      cellYear.textContent = track.year || "—";
+
+      const cellLock = document.createElement("td");
+      const tag = document.createElement("span");
+      tag.className = `tag${track.hasPassword ? " on" : ""}`;
+      tag.textContent = track.hasPassword ? "Con clave" : "Sin clave";
+      cellLock.append(tag);
+
+      const cellSize = document.createElement("td");
+      cellSize.textContent = bytes(track.size);
+
+      const cellActions = document.createElement("td");
+      const actions = document.createElement("div");
+      actions.className = "row-actions";
+
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "ghost";
+      edit.textContent = "Editar";
+      edit.addEventListener("click", () => openEdit(track));
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "ghost danger";
+      remove.textContent = "Borrar";
+      remove.addEventListener("click", () => removeTrack(track));
+
+      actions.append(edit, remove);
+      cellActions.append(actions);
+
+      tr.append(cellTitle, cellArtist, cellAlbum, cellYear, cellLock, cellSize, cellActions);
+      el.rows.append(tr);
+    }
+  }
+
+  el.refresh.addEventListener("click", loadTracks);
+
+  /* ------------------------- subida ------------------------- */
+
+  function uploadWithProgress(formData, onProgress) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/admin/tracks");
+      xhr.withCredentials = true;
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) onProgress(event.loaded / event.total);
+      });
+      xhr.addEventListener("load", () => {
+        let data = {};
+        try { data = JSON.parse(xhr.responseText); } catch { data = {}; }
+        if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+        else reject(new Error(data.error || `Error ${xhr.status}`));
+      });
+      xhr.addEventListener("error", () => reject(new Error("No se pudo contactar con el servidor")));
+      xhr.send(formData);
+    });
+  }
+
+  el.uploadForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const fileInput = $("#up-file");
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return setStatus(el.uploadStatus, "Selecciona un archivo de audio", "error");
+
+    const formData = new FormData();
+    formData.append("title", $("#up-title").value);
+    formData.append("artist", $("#up-artist").value);
+    formData.append("album", $("#up-album").value);
+    formData.append("genre", $("#up-genre").value);
+    formData.append("year", $("#up-year").value);
+    formData.append("description", $("#up-desc").value);
+    formData.append("password", $("#up-pass").value);
+    formData.append("file", file, file.name);
+
+    el.uploadBtn.disabled = true;
+    el.uploadProgress.classList.add("on");
+    el.uploadProgress.firstElementChild.style.width = "0%";
+    setStatus(el.uploadStatus, `Subiendo ${file.name}…`);
+
+    try {
+      await uploadWithProgress(formData, (ratio) => {
+        el.uploadProgress.firstElementChild.style.width = `${Math.round(ratio * 100)}%`;
+      });
+      setStatus(el.uploadStatus, "Pista subida correctamente", "ok");
+      el.uploadForm.reset();
+      await loadTracks();
+    } catch (error) {
+      setStatus(el.uploadStatus, error.message, "error");
+    } finally {
+      el.uploadBtn.disabled = false;
+      setTimeout(() => {
+        el.uploadProgress.classList.remove("on");
+        el.uploadProgress.firstElementChild.style.width = "0%";
+      }, 700);
+    }
+  });
+
+  /* ------------------------- edición ------------------------- */
+
+  function openEdit(track) {
+    state.editing = track;
+    $("#edit-file").value = track.file || "";
+    $("#edit-title").value = track.title || "";
+    $("#edit-artist").value = track.artist || "";
+    $("#edit-album").value = track.album || "";
+    $("#edit-genre").value = track.genre || "";
+    $("#edit-year").value = track.year || "";
+    $("#edit-desc").value = track.description || "";
+    $("#edit-pass").value = "";
+    $("#edit-clear").checked = false;
+    setStatus(el.editStatus, "");
+    el.editDialog.showModal();
+  }
+
+  el.editClose.addEventListener("click", () => el.editDialog.close());
+
+  el.editForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!state.editing) return;
+    const body = {
+      title: $("#edit-title").value,
+      artist: $("#edit-artist").value,
+      album: $("#edit-album").value,
+      genre: $("#edit-genre").value,
+      year: $("#edit-year").value,
+      description: $("#edit-desc").value,
+      clearPassword: $("#edit-clear").checked,
+    };
+    const password = $("#edit-pass").value;
+    if (password) body.password = password;
+
+    setStatus(el.editStatus, "Guardando…");
+    try {
+      await api(`/api/admin/tracks/${state.editing.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      el.editDialog.close();
+      await loadTracks();
+      setStatus(el.listStatus, "Cambios guardados", "ok");
+    } catch (error) {
+      setStatus(el.editStatus, error.message, "error");
+    }
+  });
+
+  async function removeTrack(track) {
+    const ok = window.confirm(`¿Borrar "${track.title}"? Se elimina el archivo de music/ y no se puede deshacer.`);
+    if (!ok) return;
+    try {
+      await api(`/api/admin/tracks/${track.id}`, { method: "DELETE" });
+      await loadTracks();
+      setStatus(el.listStatus, "Pista eliminada", "ok");
+    } catch (error) {
+      setStatus(el.listStatus, error.message, "error");
+    }
+  }
+
+  /* ------------------------- contraseña del panel ------------------------- */
+
+  el.passForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setStatus(el.passStatus, "Guardando…");
+    try {
+      await api("/api/admin/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ current: el.passCurrent.value, next: el.passNext.value }),
+      });
+      el.passForm.reset();
+      setStatus(el.passStatus, "Contraseña actualizada", "ok");
+    } catch (error) {
+      setStatus(el.passStatus, error.message, "error");
+    }
+  });
+
+  /* ------------------------- usuarios del panel ------------------------- */
+
+  function renderUsers(list, me) {
+    el.userRows.textContent = "";
+    el.userCount.textContent = `${list.length} usuario${list.length === 1 ? "" : "s"}`;
+
+    for (const item of list) {
+      const tr = document.createElement("tr");
+
+      const cellName = document.createElement("td");
+      const name = document.createElement("span");
+      name.className = "t";
+      name.textContent = item.user;
+      cellName.append(name);
+      if (item.user === me) {
+        const you = document.createElement("span");
+        you.className = "f";
+        you.textContent = "tú";
+        cellName.append(you);
+      }
+
+      const cellRole = document.createElement("td");
+      const role = document.createElement("span");
+      role.className = `tag${item.owner ? " on" : ""}`;
+      role.textContent = item.owner ? "Principal" : "Administrador";
+      cellRole.append(role);
+
+      const cellDate = document.createElement("td");
+      cellDate.textContent = item.createdAt
+        ? new Date(item.createdAt).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" })
+        : "—";
+
+      const cellActions = document.createElement("td");
+      const actions = document.createElement("div");
+      actions.className = "row-actions";
+
+      const pass = document.createElement("button");
+      pass.type = "button";
+      pass.className = "ghost";
+      pass.textContent = "Cambiar clave";
+      pass.addEventListener("click", () => openUserPassword(item.user));
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "ghost danger";
+      remove.textContent = "Borrar";
+      remove.disabled = item.owner || item.user === me;
+      remove.addEventListener("click", () => removeUser(item.user));
+
+      actions.append(pass, remove);
+      cellActions.append(actions);
+
+      tr.append(cellName, cellRole, cellDate, cellActions);
+      el.userRows.append(tr);
+    }
+  }
+
+  async function loadUsers() {
+    if (!state.owner) {
+      el.usersCard.hidden = true;
+      return;
+    }
+    el.usersCard.hidden = false;
+    try {
+      const data = await api("/api/admin/users");
+      state.owner = Boolean(data.owner);
+      el.usersCard.hidden = !state.owner;
+      renderUsers(data.users || [], data.you || state.me);
+    } catch (error) {
+      setStatus(el.userStatus, error.message, "error");
+    }
+  }
+
+  el.userForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setStatus(el.userStatus, "Creando…");
+    try {
+      await api("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user: el.userName.value.trim(), password: el.userPass.value }),
+      });
+      el.userForm.reset();
+      setStatus(el.userStatus, "Usuario creado", "ok");
+      await loadUsers();
+    } catch (error) {
+      setStatus(el.userStatus, error.message, "error");
+    }
+  });
+
+  let editingUser = "";
+
+  function openUserPassword(user) {
+    editingUser = user;
+    el.userPassName.value = user;
+    el.userPassNew.value = "";
+    setStatus(el.userPassStatus, "");
+    el.userPassDialog.showModal();
+  }
+
+  el.userPassClose.addEventListener("click", () => el.userPassDialog.close());
+
+  el.userPassForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!editingUser) return;
+    setStatus(el.userPassStatus, "Guardando…");
+    try {
+      await api(`/api/admin/users/${encodeURIComponent(editingUser)}/password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: el.userPassNew.value }),
+      });
+      el.userPassDialog.close();
+      setStatus(el.userStatus, "Contraseña actualizada", "ok");
+    } catch (error) {
+      setStatus(el.userPassStatus, error.message, "error");
+    }
+  });
+
+  async function removeUser(user) {
+    if (!window.confirm(`¿Borrar el usuario "${user}"? Ya no podrá entrar al panel.`)) return;
+    try {
+      await api(`/api/admin/users/${encodeURIComponent(user)}`, { method: "DELETE" });
+      setStatus(el.userStatus, "Usuario borrado", "ok");
+      await loadUsers();
+    } catch (error) {
+      setStatus(el.userStatus, error.message, "error");
+    }
+  }
+
+  if (!sessionChecked) {
+    sessionChecked = true;
+    checkSession();
+  }
+</script>
+</body>
+</html>

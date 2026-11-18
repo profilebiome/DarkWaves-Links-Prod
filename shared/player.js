@@ -18,6 +18,8 @@ export const icons = {
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>',
   music:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V6.4l10-2v11.2"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="15.6" r="2.5"/></svg>',
+  lock:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg>',
 };
 
 export function mountIcons(root = document) {
@@ -75,6 +77,7 @@ export class Player extends EventTarget {
     this.audio.volume = this._readVolume();
     this.tracks = [];
     this.index = -1;
+    this.loadedIndex = -1;
     this.shuffle = false;
     this.repeat = "off";
     this._ctx = null;
@@ -108,25 +111,44 @@ export class Player extends EventTarget {
     return !this.audio.paused;
   }
 
+  /** Hay audio cargado y corresponde a la pista seleccionada. */
+  get loaded() {
+    return Boolean(this.audio.src) && this.loadedIndex === this.index;
+  }
+
   duration() {
     const value = this.audio.duration;
     return Number.isFinite(value) ? value : 0;
   }
 
   _readVolume() {
-    const stored = Number(localStorage.getItem("dw:volume"));
-    return Number.isFinite(stored) && stored > 0 ? Math.min(stored, 1) : 0.85;
+    try {
+      const raw = localStorage.getItem("dw:volume");
+      if (raw === null) return 0.85;
+      const stored = Number(raw);
+      return Number.isFinite(stored) && stored >= 0 ? Math.min(stored, 1) : 0.85;
+    } catch {
+      return 0.85; // almacenamiento bloqueado (modo privado)
+    }
   }
 
   async load() {
-    let data;
+    let data = null;
+    let serverError = null;
     try {
       // Modo local: el servidor lee la carpeta music/ y firma cada pista.
       const response = await fetch("/api/tracks", { cache: "no-store" });
-      if (!response.ok) throw new Error("sin-api");
-      data = await response.json();
+      if (response.ok) data = await response.json();
+      else if (response.status !== 404) {
+        serverError = new Error(`El servidor respondió ${response.status}. Recarga la página.`);
+      }
     } catch {
-      // Modo estático (GitHub Pages): playlist generada en music/tracks.json.
+      // Sin servidor: se intenta la playlist estática (GitHub Pages).
+    }
+    if (serverError) throw serverError;
+
+    if (!data) {
+      // Modo estático: playlist generada en music/tracks.json.
       const response = await fetch("music/tracks.json", { cache: "no-store" });
       if (!response.ok) {
         throw new Error("No hay playlist. Agrega tus temas a la carpeta music/.");
@@ -136,11 +158,12 @@ export class Player extends EventTarget {
 
     const list = Array.isArray(data.tracks) ? data.tracks : [];
     this.tracks = list
-      .filter((track) => track && (track.file || track.url))
+      .filter((track) => track && (track.id || track.file || track.url))
       .map((track) => ({
         ...track,
         id: track.id || track.file,
-        url: track.url || `music/${encodeURIComponent(track.file)}`,
+        locked: Boolean(track.locked),
+        url: track.url || (track.file ? `music/${encodeURIComponent(track.file)}` : ""),
       }));
 
     if (this.tracks.length && this.index < 0) this.index = 0;
@@ -192,10 +215,15 @@ export class Player extends EventTarget {
   }
 
   async playIndex(index, autoplay = true) {
-    if (!this.tracks[index]) return;
+    const track = this.tracks[index];
+    if (!track) return;
     this.index = index;
-    const track = this.current;
+    if (!track.url) {
+      this.dispatchEvent(new CustomEvent("locked", { detail: { track, index } }));
+      return;
+    }
     this.audio.src = track.url;
+    this.loadedIndex = index;
     this.audio.load();
     this.dispatchEvent(new CustomEvent("trackchange", { detail: { track, index } }));
     this.dispatchEvent(new CustomEvent("time", { detail: { current: 0, duration: 0 } }));
@@ -204,6 +232,10 @@ export class Player extends EventTarget {
 
   async play() {
     if (!this.current) return;
+    if (!this.current.url) {
+      this.dispatchEvent(new CustomEvent("locked", { detail: { track: this.current, index: this.index } }));
+      return;
+    }
     this.ensureAnalyser();
     try {
       await this.audio.play();
@@ -232,8 +264,12 @@ export class Player extends EventTarget {
   setVolume(value) {
     const volume = Math.max(0, Math.min(1, value));
     this.audio.volume = volume;
-    localStorage.setItem("dw:volume", String(volume));
-    this.dispatchEvent(new CustomEvent("volume", { volume }));
+    try {
+      localStorage.setItem("dw:volume", String(volume));
+    } catch {
+      /* almacenamiento bloqueado: solo afecta a la próxima visita */
+    }
+    this.dispatchEvent(new CustomEvent("volume", { detail: { volume } }));
   }
 
   _pickShuffle() {
@@ -275,8 +311,12 @@ export class Player extends EventTarget {
 
 export function hotkeys(player) {
   const handler = (event) => {
-    const tag = (event.target && event.target.tagName) || "";
-    if (/INPUT|TEXTAREA|SELECT/.test(tag)) return;
+    const target = event.target;
+    const tag = (target && target.tagName) || "";
+    // No interferir con campos, botones, enlaces ni con un diálogo abierto.
+    if (/INPUT|TEXTAREA|SELECT|BUTTON|A/.test(tag)) return;
+    if (target && target.closest && target.closest('[contenteditable="true"], [role="textbox"]')) return;
+    if (document.querySelector("dialog[open]")) return;
     if (event.code === "Space") {
       event.preventDefault();
       player.toggle();

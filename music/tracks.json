@@ -1,8 +1,14 @@
 {
   "tracks": [
     {
-      "file": "PlinPlaKi.mp3",
-      "title": "PlinPlaKi",
+      "file": "Joss Giant Ft LH Shango.mp3",
+      "title": "Joss Giant Ft LH Shango",
+      "artist": "Artista desconocido",
+      "ext": "mp3"
+    },
+    {
+      "file": "Joss Giant Shango Solo.mp3",
+      "title": "Joss Giant Shango Solo",
       "artist": "Artista desconocido",
       "ext": "mp3"
     }
