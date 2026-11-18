@@ -40,6 +40,20 @@
       "locked": true
     },
     {
+      "file": "Prueba12s.wav",
+      "title": "Prueba12s",
+      "artist": "Test",
+      "ext": "wav",
+      "url": "https://darkwaves-panel.profilebio-me.workers.dev/audio/Prueba12s.wav",
+      "assetId": 764184498,
+      "key": {
+        "salt": "d97e2a87e2386835005c1664b8e76523",
+        "iterations": 100000,
+        "hash": "958fd6e7dbc11ea6ab84c41af0b1f33696e2bba8c9daf50a200089401edc1da9"
+      },
+      "locked": true
+    },
+    {
       "file": "PruebaWav.wav",
       "title": "PruebaWav",
       "artist": "Test",
