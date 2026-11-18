@@ -194,6 +194,19 @@ async function publishViaApi() {
   console.log(`  ↳ Publicado en GitHub (${changes.length} archivo/s): ${commitMessage}`);
 }
 
+/* En el host el repo existe pero sin remoto "origin": se publica por API. */
+let gitRemoteCache = null;
+async function gitRemoteReady() {
+  if (gitRemoteCache !== null) return gitRemoteCache;
+  if (!fs.existsSync(path.join(ROOT, '.git'))) {
+    gitRemoteCache = false;
+    return false;
+  }
+  const remote = await runGit(['remote', 'get-url', 'origin']);
+  gitRemoteCache = remote.code === 0 && remote.stdout.trim().length > 0;
+  return gitRemoteCache;
+}
+
 async function runSync() {
   if (syncBusy) {
     queueSync(syncMessage);
@@ -202,8 +215,8 @@ async function runSync() {
   syncBusy = true;
   const message = syncMessage || 'Panel: actualizar el sitio';
   try {
-    // Sin repositorio git (Render entrega el código sin .git): API de GitHub.
-    if (!fs.existsSync(path.join(ROOT, '.git'))) {
+    // Sin remoto git (Render entrega el código sin "origin"): API de GitHub.
+    if (!(await gitRemoteReady())) {
       await publishViaApi();
       return;
     }
