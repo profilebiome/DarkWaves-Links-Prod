@@ -1198,7 +1198,10 @@
 
   /* ---------- acceso de administrador en la esquina ---------- */
   /* ---------------- sesión única (panel + playlist) ---------------- */
-  const REMOTE = (PANEL_ENDPOINT || "").replace(/\/+$/, "");
+  // En local (localhost) el panel habla con el servidor local, no con el Worker:
+    // así no hay CORS ni errores "Failed to fetch".
+  const isLocalHost = /^(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)$/.test(location.hostname);
+  const REMOTE = isLocalHost ? "" : (PANEL_ENDPOINT || "").replace(/\/+$/, "");
   const CRED_KEY = "dw:worker-cred";
 
   function readCred() {

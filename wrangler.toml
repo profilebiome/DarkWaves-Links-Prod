@@ -8,5 +8,5 @@ compatibility_date = "2024-11-01"
 [vars]
 REPO = "profilebiome/DarkWaves-Links-Prod"
 BRANCH = "main"
-ALLOWED_ORIGIN = "https://josspreview.profilebio.me"
+ALLOWED_ORIGIN = "https://josspreview.profilebio.me,http://localhost:4321,http://127.0.0.1:4321"
 workers_dev = true
