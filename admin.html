@@ -698,6 +698,19 @@
     return data;
   }
 
+  /** Mismo id que usa el Worker: sha1(nombre de archivo) recortado a 16. */
+  async function trackKey(fileName) {
+    try {
+      const buffer = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(String(fileName)));
+      return Array.from(new Uint8Array(buffer))
+        .slice(0, 8)
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
+    } catch {
+      return "";
+    }
+  }
+
   function bytes(value) {
     const size = Number(value) || 0;
     if (size < 1024) return `${size} B`;
@@ -1024,7 +1037,7 @@
       const track = created && created.track;
       if (track) {
         state.tracks.push({
-          id: track.assetId ? String(track.assetId) : `tmp-${Date.now()}`,
+          id: (await trackKey(track.file)) || `tmp-${Date.now()}`,
           file: track.file,
           title: track.title,
           artist: track.artist,
