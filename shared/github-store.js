@@ -119,20 +119,35 @@ function httpError(status, data) {
 }
 
 async function request(cfg, path, init = {}) {
-  let response;
-  try {
-    response = await fetch(`${apiBase()}${path}`, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${cfg.token}`,
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        ...(init.body ? { "Content-Type": "application/json" } : {}),
-      },
-    });
-  } catch {
-    throw new Error("No se pudo contactar con la API de GitHub (revisa tu conexión)");
+  let response = null;
+  let lastError = null;
+
+  // GitHub devuelve 502/503 puntuales (balanceo o límite secundario): se reintenta.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      response = await fetch(`${apiBase()}${path}`, {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${cfg.token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          ...(init.body ? { "Content-Type": "application/json" } : {}),
+        },
+      });
+    } catch {
+      lastError = new Error("No se pudo contactar con la API de GitHub (revisa tu conexión)");
+      await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+      continue;
+    }
+
+    if (response.status === 502 || response.status === 503 || response.status === 504) {
+      await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+      continue;
+    }
+    break;
   }
+
+  if (!response) throw lastError || new Error("No se pudo contactar con la API de GitHub");
 
   const text = await response.text();
   let data = null;
@@ -158,6 +173,56 @@ const contentsUrl = (cfg, filePath) =>
 /** Comprueba token, repo y rama. Devuelve los datos del repositorio. */
 export async function testConnection(cfg) {
   return request(cfg, repoUrl(cfg));
+}
+
+/**
+ * Comprueba de verdad que el token puede ESCRIBIR.
+ *
+ * GitHub no expone los permisos del token en `GET /repos`: un token de solo
+ * lectura responde bien a las lecturas y falla con 403 al guardar. Así que se
+ * crea una rama temporal, se escribe y borra un archivo en ella y se elimina la
+ * rama. No toca `main` ni dispara despliegues.
+ */
+export async function verifyWriteAccess(cfg) {
+  const branchName = `dw-panel-check-${Date.now().toString(36)}`;
+  const base = cfg.branch || "main";
+
+  let head = null;
+  try {
+    head = await request(cfg, repoUrl(cfg, `/git/ref/heads/${encodeURIComponent(base)}`));
+  } catch (error) {
+    if (error.status === 403) return { ok: false, message: error.message };
+    if (error.status === 404) return { ok: false, message: `La rama "${base}" no existe` };
+    throw error;
+  }
+  const sha = head && head.object ? head.object.sha : null;
+  if (!sha) return { ok: false, message: "No se pudo leer la rama" };
+
+  try {
+    await request(cfg, repoUrl(cfg, "/git/refs"), {
+      method: "POST",
+      body: JSON.stringify({ ref: `refs/heads/${branchName}`, sha }),
+    });
+  } catch (error) {
+    if (error.status === 403) return { ok: false, message: error.message };
+    if (error.status === 422) return { ok: true, message: "" };
+    throw error;
+  }
+
+  try {
+    const tempCfg = { ...cfg, branch: branchName };
+    await putBase64(tempCfg, ".dw-panel-check", toBase64("ok"), "Verificación del panel");
+    await deletePath(tempCfg, ".dw-panel-check", "Verificación del panel");
+    return { ok: true, message: "" };
+  } catch (error) {
+    return { ok: false, message: error.message };
+  } finally {
+    try {
+      await request(cfg, repoUrl(cfg, `/git/refs/heads/${branchName}`), { method: "DELETE" });
+    } catch {
+      /* la rama temporal se queda; no afecta al sitio */
+    }
+  }
 }
 
 /** Contenido de una carpeta (array) o [] si no existe. */

@@ -594,7 +594,7 @@
   } from "/shared/static-auth.js";
   import { staticApi, staticUpload, isConnected } from "/shared/static-panel.js";
   import {
-    defaultConfig, readConfig, saveConfig, clearConfig, testConnection,
+    defaultConfig, readConfig, saveConfig, clearConfig, testConnection, verifyWriteAccess,
   } from "/shared/github-store.js";
 
   const $ = (selector) => document.querySelector(selector);
@@ -922,7 +922,14 @@
         branch: el.ghBranch.value,
       });
       const repo = await testConnection(cfg);
-      setStatus(el.ghStatus, `Conectado a ${repo.full_name || `${cfg.owner}/${cfg.repo}`}`, "ok");
+
+      setStatus(el.ghStatus, "Comprobando permiso de escritura…");
+      const write = await verifyWriteAccess(cfg);
+      if (!write.ok) {
+        throw new Error(write.message || "El token no puede escribir en el repositorio");
+      }
+
+      setStatus(el.ghStatus, `Conectado a ${repo.full_name || `${cfg.owner}/${cfg.repo}`} · puede escribir`, "ok");
       paintGithub();
       applyPermissions();
       await loadTracks();
