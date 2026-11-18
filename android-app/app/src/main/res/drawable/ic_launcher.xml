@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Icono de Darkwaves Link Pro: la onda de la marca en blanco sobre fondo azul. -->
+<!-- Icono de Darkwaves Link Pro: onda blanca y afilada sobre azul. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -9,27 +9,27 @@
     <!-- fondo azul redondeado -->
     <path
         android:fillColor="#0B3FA8"
-        android:pathData="M20,0h68a20,20 0 0 1 20,20v68a20,20 0 0 1 -20,20h-68a20,20 0 0 1 -20,-20v-68a20,20 0 0 1 20,-20z" />
+        android:pathData="M22,0h64a22,22 0 0 1 22,22v64a22,22 0 0 1 -22,22h-64a22,22 0 0 1 -22,-22v-64a22,22 0 0 1 22,-22z" />
 
-    <!-- degradado simple: banda más clara arriba -->
+    <!-- banda superior más clara -->
     <path
-        android:fillColor="#1560E8"
-        android:pathData="M20,0h68a20,20 0 0 1 20,20v26h-108v-26a20,20 0 0 1 20,-20z" />
+        android:fillColor="#1C63F0"
+        android:pathData="M22,0h64a22,22 0 0 1 22,22v24h-108v-24a22,22 0 0 1 22,-22z" />
 
-    <!-- onda de la marca -->
+    <!-- onda -->
     <path
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="6"
+        android:strokeWidth="6.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="#00000000"
-        android:pathData="M12,54h14l6,-18 8,36 7,-27 6,18h10" />
+        android:pathData="M11,54h13l5.2,-16 6.8,32 6,-40 6.4,24 4.6,-10h9" />
 
-    <!-- línea de continuación -->
+    <!-- continuación de la línea -->
     <path
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="6"
+        android:strokeWidth="6.5"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M67,54h29" />
+        android:pathData="M64,54h33" />
 </vector>

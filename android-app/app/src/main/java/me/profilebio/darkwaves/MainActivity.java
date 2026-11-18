@@ -22,7 +22,7 @@ import android.webkit.WebViewClient;
  */
 public class MainActivity extends Activity {
 
-    private static final String SITE = "https://josspreview.profilebio.me/?v=1.6";
+    private static final String SITE = "https://josspreview.profilebio.me/?v=1.7";
     private static final int REQUEST_FILE = 1001;
 
     private WebView web;
