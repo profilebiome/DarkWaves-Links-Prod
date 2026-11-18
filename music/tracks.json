@@ -24,20 +24,6 @@
         "hash": "5894fa6c9e49777e53c3b620f78911bf30e76e2d11b6c676ea248f0ed5c09e72"
       },
       "locked": true
-    },
-    {
-      "file": "tmp-ui.mp3",
-      "title": "LoopUI",
-      "artist": "Artista desconocido",
-      "ext": "mp3",
-      "url": "https://darkwaves-panel.profilebio-me.workers.dev/audio/tmp-ui.mp3",
-      "assetId": 764520630,
-      "key": {
-        "salt": "102aeda66c58f8c461d4aafebfdc5347",
-        "iterations": 100000,
-        "hash": "e7c3413ab4516adb792a3ec4da5fb23a863a2053b16f83dd425db35231542123"
-      },
-      "locked": true
     }
   ]
 }
