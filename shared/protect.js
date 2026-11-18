@@ -1,31 +1,24 @@
 /**
- * Protección anti-captura del reproductor.
+ * Bloqueo de captura / grabación del reproductor.
  *
- * LÍMITE REAL (importante, sin adornos): ningún navegador puede impedir que el
- * sistema operativo capture la pantalla. Win+PrtScn, Recortes, Win+Shift+S,
- * Cmd+Shift+3/4/5, OBS, Game Bar, una capturadora HDMI o el grabador nativo de
- * Android/iOS capturan píxeles sin pedir permiso a la página; una cámara
- * apuntando al monitor no se puede detectar de ninguna forma.
+ * LÍMITE REAL: ningún navegador puede impedir que el sistema operativo capture
+ * la pantalla (Win+PrtScn, Recortes, Cmd+Shift+3/4/5, OBS, Game Bar, una
+ * capturadora o el grabador nativo de Android/iOS). Lo que sí se puede —y es lo
+ * que hace este módulo— es:
  *
- * Lo que sí hace este módulo, y sí sirve:
+ *   1. Bloquear las grabaciones hechas DESDE la página: `getDisplayMedia`
+ *      (compartir pantalla), `captureStream` del audio, picture-in-picture.
+ *   2. Detectar el momento en que se abre un grabador o se cambia de ventana
+ *      (pierde el foco u oculta la pestaña): PAUSA el audio y TAPA el contenido
+ *      con un aviso. Lo grabado en ese instante sale en negro y en silencio.
+ *   3. Bloquear los atajos de captura e impresión: PrintScreen, Alt+PrintScreen,
+ *      Cmd+Shift+3/4/5, Ctrl/Cmd+P, Ctrl/Cmd+S, F12 y herramientas de desarrollo,
+ *      y vaciar el portapapeles tras PrintScreen.
  *
- *   1. Bloquea las capturas hechas DESDE la página: `getDisplayMedia`
- *      (compartir pantalla), `captureStream` del audio, picture-in-picture y
- *      MediaRecorder sobre el audio del reproductor.
- *   2. Detecta el instante en que se abre un grabador o el usuario cambia de
- *      ventana (pierde el foco / oculta la pestaña): PAUSA el audio y TAPA el
- *      contenido con un aviso. Lo capturado sale en negro y en silencio.
- *   3. Bloquea atajos de captura e impresión (PrtScn, Alt+PrtScn, Cmd+Shift+3/4/5,
- *      Ctrl/Cmd+P, Ctrl/Cmd+S, F12, herramientas de desarrollo) y vacía el
- *      portapapeles tras PrintScreen.
- *   4. Marca el agua la reproducción: cuadrícula con dominio, usuario y hora que
- *      se recoloca cada 30 s. Una grabación filtrada identifica a la sesión.
- *
- * Conclusión honesta: esto encarece y rastrea la copia; no la impide.
+ * No dibuja nada permanente: la página se ve exactamente igual.
  */
 
 const GUARD_DELAY = 250; // ms de gracia antes de tapar por pérdida de foco
-const MARK_INTERVAL = 30_000;
 
 const CSS = `
   body.dw-protected {
@@ -69,35 +62,7 @@ const CSS = `
     text-transform: uppercase;
     color: #6f86b8;
   }
-
-  /* Marca de agua en cuadrícula: no se quita recortando una esquina. */
-  .dw-marks {
-    position: fixed;
-    inset: 0;
-    z-index: 2147483000;
-    pointer-events: none;
-    overflow: hidden;
-  }
-  .dw-mark {
-    position: absolute;
-    font: 500 10px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: #e6efff;
-    opacity: 0.16;
-    white-space: nowrap;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-    transform: rotate(-18deg);
-  }
-  body.dw-guard .dw-marks { display: none; }
 `;
-
-function stamp() {
-  const now = new Date();
-  const date = now.toISOString().slice(0, 10);
-  const time = now.toTimeString().slice(0, 8);
-  return `${date} ${time}`;
-}
 
 export function protectMedia(root = document.body) {
   const scope = root || document.body;
@@ -128,43 +93,6 @@ export function protectMedia(root = document.body) {
     "<small>Vuelve a la ventana para continuar</small>";
   document.body.appendChild(note);
   cleanups.push(() => note.remove());
-
-  /* --------------------------- marca de agua ------------------------------- */
-  const marks = document.createElement("div");
-  marks.className = "dw-marks";
-  marks.setAttribute("aria-hidden", "true");
-  document.body.appendChild(marks);
-  cleanups.push(() => marks.remove());
-
-  const paintMarks = () => {
-    const user = document.body.dataset.dwUser || "";
-    const host = window.location.hostname || "local";
-    const label = [host, user, stamp()].filter(Boolean).join(" · ");
-    const width = window.innerWidth || 1024;
-    const height = window.innerHeight || 768;
-    const columns = Math.max(2, Math.round(width / 320));
-    const rows = Math.max(3, Math.round(height / 200));
-    // Posición variable para que no se pueda recortar siempre el mismo borde.
-    const jitter = () => Math.round(Math.random() * 40) - 20;
-
-    marks.textContent = "";
-    for (let row = 0; row < rows; row += 1) {
-      for (let column = 0; column < columns; column += 1) {
-        const mark = document.createElement("div");
-        mark.className = "dw-mark";
-        mark.textContent = label;
-        mark.style.left = `${(column * width) / columns + jitter()}px`;
-        mark.style.top = `${(row * height) / rows + jitter()}px`;
-        marks.appendChild(mark);
-      }
-    }
-  };
-
-  paintMarks();
-  const markTimer = window.setInterval(paintMarks, MARK_INTERVAL);
-  cleanups.push(() => window.clearInterval(markTimer));
-  on(document, "dw:user", paintMarks);
-  on(window, "resize", paintMarks);
 
   /* --------------- elementos de audio creados por el reproductor ----------- */
   const Media = window.HTMLMediaElement;
@@ -238,7 +166,7 @@ export function protectMedia(root = document.body) {
       event.preventDefault();
       return;
     }
-    // macOS: Cmd+Shift+3 / 4 / 5 (captura y grabación de pantalla).
+    // macOS: Cmd+Shift+3 / 4 / 5 / 6 (captura y grabación de pantalla).
     if (event.metaKey && event.shiftKey && ["3", "4", "5", "6"].includes(key)) {
       event.preventDefault();
       return;
