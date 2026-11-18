@@ -13,3 +13,6 @@ Thumbs.db
 .tmp-*
 .render-deploy.json
 cloudflared.exe
+
+# wrangler
+.wrangler/
