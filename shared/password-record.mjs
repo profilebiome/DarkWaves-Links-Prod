@@ -12,7 +12,7 @@
  */
 import crypto from 'node:crypto';
 
-export const PBKDF2_ITERATIONS = 210000;
+export const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_BYTES = 32;
 
 export function makeRecord(password) {

@@ -30,7 +30,7 @@
 
 const AUDIO_EXT = /\.(mp3|wav|ogg|oga|m4a|aac|flac|opus|webm)$/i;
 const USER_NAME = /^[a-z0-9._-]{3,32}$/;
-const PBKDF2_ITERATIONS = 210000;
+const PBKDF2_ITERATIONS = 100000;
 const TRACKS_PATH = 'music/tracks.json';
 const ACCOUNTS_PATH = 'shared/accounts.json';
 const MUSIC_DIR = 'music';
@@ -279,7 +279,10 @@ export default {
     const url = new URL(request.url);
     const pathname = url.pathname;
 
-    if (pathname === '/' || pathname === '/healthz') return json({ ok: true, service: 'darkwaves-panel' }, 200, headers);
+    if (pathname === '/' || pathname === '/healthz') {
+      return json({ ok: true, service: 'darkwaves-panel' }, 200, headers);
+    }
+
     if (!pathname.startsWith('/api/admin/')) return json({ error: 'Ruta no encontrada' }, 404, headers);
     if (!env.GITHUB_TOKEN) return json({ error: 'Falta el secreto GITHUB_TOKEN en el Worker' }, 500, headers);
 

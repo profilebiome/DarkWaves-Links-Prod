@@ -1,0 +1,12 @@
+# Worker del panel de DarkWaves (backend sin tokens para el sitio publicado).
+name = "darkwaves-panel"
+main = "worker/panel.js"
+compatibility_date = "2024-11-01"
+
+# El token de GitHub NO va aquí: se guarda como secreto con
+#   npx wrangler secret put GITHUB_TOKEN --name darkwaves-panel
+[vars]
+REPO = "profilebiome/DarkWaves-Links-Prod"
+BRANCH = "main"
+ALLOWED_ORIGIN = "https://josspreview.profilebio.me"
+workers_dev = true

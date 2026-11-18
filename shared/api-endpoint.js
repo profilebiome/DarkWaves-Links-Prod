@@ -1,11 +1,8 @@
 /**
  * Backend del panel (Cloudflare Worker).
  *
- * Si tiene una URL, el panel del sitio publicado funciona completo desde el
- * dominio: subir música, editar pistas, claves y usuarios. El token de GitHub
- * vive en el Worker; el navegador solo envía usuario y contraseña.
- *
- * Se rellena al desplegar:
- *   export const PANEL_ENDPOINT = "https://darkwaves-panel.TU-USUARIO.workers.dev";
+ * El token de GitHub vive en el Worker: el navegador solo envía usuario y
+ * contraseña, y el panel del dominio puede subir música, editar pistas y
+ * gestionar usuarios sin pasar por GitHub.
  */
-export const PANEL_ENDPOINT = "";
+export const PANEL_ENDPOINT = "https://darkwaves-panel.profilebio-me.workers.dev";

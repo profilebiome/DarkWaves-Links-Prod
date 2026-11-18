@@ -17,7 +17,7 @@ const SESSION_KEY = "dw:static-session";
 const GRANTS_KEY = "dw:static-grants";
 const SESSION_TTL = 12 * 60 * 60 * 1000;
 const GRANT_TTL = 12 * 60 * 60 * 1000;
-export const PBKDF2_ITERATIONS = 210000;
+export const PBKDF2_ITERATIONS = 100000;
 
 const hex = (buffer) =>
   Array.from(new Uint8Array(buffer))
@@ -61,7 +61,7 @@ async function derive(password, record) {
     {
       name: "PBKDF2",
       salt: encoder.encode(record.salt),
-      iterations: Number(record.iterations) || 210000,
+      iterations: Number(record.iterations) || 100000,
       hash: "SHA-256",
     },
     key,
