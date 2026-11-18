@@ -1066,8 +1066,8 @@
         body: JSON.stringify({ id: pending.id, password: unlock.pass.value }),
       });
       const track = player.tracks.find((item) => item.id === pending.id);
-      // 404 = no hay servidor (GitHub Pages): la clave se comprueba en el navegador.
-      if (response.status === 404) {
+      // 404/405 = no hay servidor (GitHub Pages): la clave se comprueba en el navegador.
+      if (response.status === 404 || response.status === 405) {
         const result = await staticUnlockTrack(pending.file || pending.id, unlock.pass.value);
         if (!result.ok) throw new Error(result.error);
         if (track) track.url = `music/${encodeURIComponent(track.file || track.id)}`;
@@ -1160,15 +1160,16 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user: adminUi.user.value.trim(), password: adminUi.pass.value }),
       });
-      const data = await response.json().catch(() => ({}));
-      if (response.status === 404) {
-        // Sin backend (GitHub Pages): se verifica contra shared/accounts.json.
+      // En GitHub Pages, POST /api/* responde 405 (y GET 404): se verifica localmente.
+      if (response.status === 404 || response.status === 405) {
+        // Sin backend: se verifica contra shared/accounts.json.
         const account = await staticLogin(adminUi.user.value, adminUi.pass.value);
         if (!account) throw new Error("Usuario o contraseña incorrectos");
         adminUi.pass.value = "";
         window.location.href = "/admin";
         return;
       }
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "No se pudo iniciar sesión");
       adminUi.pass.value = "";
       window.location.href = "/admin";
