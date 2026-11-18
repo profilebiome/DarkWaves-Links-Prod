@@ -162,12 +162,15 @@ export class Player extends EventTarget {
       .map((track) => {
         const locked = Boolean(track.locked);
         const file = track.file || track.id;
+        // La URL real se guarda aparte: una pista bloqueada NO tiene `url` hasta
+        // que se valida su clave (si no, sonaría sin pedirla).
+        const streamUrl = track.url || (file ? `music/${encodeURIComponent(file)}` : "");
         return {
           ...track,
           id: track.id || track.file,
           locked,
-          // Una pista bloqueada no recibe URL hasta que se desbloquee.
-          url: track.url || (!locked && file ? `music/${encodeURIComponent(file)}` : ""),
+          streamUrl,
+          url: locked ? "" : streamUrl,
         };
       });
 
@@ -241,7 +244,7 @@ export class Player extends EventTarget {
     const track = this.tracks[index];
     if (!track) return;
     this.index = index;
-    if (!track.url) {
+    if (track.locked || !track.url) {
       this.dispatchEvent(new CustomEvent("locked", { detail: { track, index } }));
       return;
     }
@@ -255,7 +258,7 @@ export class Player extends EventTarget {
 
   async play() {
     if (!this.current) return;
-    if (!this.current.url) {
+    if (this.current.locked || !this.current.url) {
       this.dispatchEvent(new CustomEvent("locked", { detail: { track: this.current, index: this.index } }));
       return;
     }
