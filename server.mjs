@@ -137,7 +137,30 @@ const SECURE_COOKIES = process.env.DARKWAVES_SECURE_COOKIES
   : process.env.NODE_ENV === 'production';
 
 /* El secreto vive en memoria: al reiniciar se invalidan enlaces y sesiones. */
-const SECRET = crypto.randomBytes(32);
+/*
+ * Secreto de firma (enlaces de audio y permisos de pista).
+ * Se guarda en el disco para que un reinicio del host no invalide los enlaces
+ * ni obligue a los oyentes a escribir otra vez la contraseña de la pista.
+ */
+function loadSecret() {
+  const file = path.join(DATA_DIR, 'secret.key');
+  try {
+    const stored = fs.readFileSync(file);
+    if (stored && stored.length >= 32) return stored;
+  } catch {
+    /* primer arranque */
+  }
+  const generated = crypto.randomBytes(32);
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(file, generated, { mode: 0o600 });
+  } catch (error) {
+    console.warn(`  No se pudo guardar el secreto de firma: ${error.message}`);
+  }
+  return generated;
+}
+
+const SECRET = loadSecret();
 const STREAM_TTL = 1000 * 60 * 60 * 6;
 const GRANT_TTL = 1000 * 60 * 60 * 12;
 const SESSION_TTL = 1000 * 60 * 60 * 8;
