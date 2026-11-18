@@ -24,6 +24,20 @@
         "hash": "5894fa6c9e49777e53c3b620f78911bf30e76e2d11b6c676ea248f0ed5c09e72"
       },
       "locked": true
+    },
+    {
+      "file": "PlinPlaKi Joss.wav",
+      "title": "PlinPlaKi Joss",
+      "artist": "Artista desconocido",
+      "ext": "wav",
+      "url": "https://darkwaves-panel.profilebio-me.workers.dev/audio/PlinPlaKi%20Joss.wav",
+      "assetId": 764604445,
+      "key": {
+        "salt": "e4a5711f993d694f144174c639be64b6",
+        "iterations": 100000,
+        "hash": "bc978d3510c64374b9f42ddf1e1fafba61d7c279ff59c3f43acfcbfaa15a7cc5"
+      },
+      "locked": true
     }
   ]
 }
