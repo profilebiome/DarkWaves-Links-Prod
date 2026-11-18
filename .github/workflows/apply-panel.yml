@@ -1,0 +1,42 @@
+name: Aplicar cambios del panel
+
+# El panel del sitio publicado no puede escribir en el repositorio: deja un
+# archivo en shared/_pending/ o music/_pending/ y este flujo lo aplica.
+on:
+  push:
+    paths:
+      - "shared/_pending/**"
+      - "music/_pending/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: panel-pending
+  cancel-in-progress: false
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Aplicar los cambios pendientes
+        run: node tools/apply-pending.mjs
+
+      - name: Publicar el resultado
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No hay nada que publicar."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A shared music
+          git commit -m "Aplicar cambios del panel"
+          git push
