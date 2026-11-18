@@ -159,12 +159,17 @@ export class Player extends EventTarget {
     const list = Array.isArray(data.tracks) ? data.tracks : [];
     this.tracks = list
       .filter((track) => track && (track.id || track.file || track.url))
-      .map((track) => ({
-        ...track,
-        id: track.id || track.file,
-        locked: Boolean(track.locked),
-        url: track.url || (track.file ? `music/${encodeURIComponent(track.file)}` : ""),
-      }));
+      .map((track) => {
+        const locked = Boolean(track.locked);
+        const file = track.file || track.id;
+        return {
+          ...track,
+          id: track.id || track.file,
+          locked,
+          // Una pista bloqueada no recibe URL hasta que se desbloquee.
+          url: track.url || (!locked && file ? `music/${encodeURIComponent(file)}` : ""),
+        };
+      });
 
     if (this.tracks.length && this.index < 0) this.index = 0;
     if (this.index >= this.tracks.length) this.index = this.tracks.length ? 0 : -1;

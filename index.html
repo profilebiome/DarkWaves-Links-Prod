@@ -1070,6 +1070,7 @@
       if (response.status === 404) {
         const result = await staticUnlockTrack(pending.file || pending.id, unlock.pass.value);
         if (!result.ok) throw new Error(result.error);
+        if (track) track.url = `music/${encodeURIComponent(track.file || track.id)}`;
       } else {
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || "No se pudo desbloquear la pista");
@@ -1091,8 +1092,15 @@
 
   /* En modo estático, las pistas desbloqueadas se recuerdan 12 h. */
   player.addEventListener("tracks", async (event) => {
-    const changed = await applyStaticGrants(event.detail && event.detail.tracks ? event.detail.tracks : []);
-    if (changed) render();
+    const tracks = event.detail && event.detail.tracks ? event.detail.tracks : [];
+    const changed = await applyStaticGrants(tracks);
+    if (!changed) return;
+    for (const track of tracks) {
+      if (!track.locked && !track.url) {
+        track.url = `music/${encodeURIComponent(track.file || track.id)}`;
+      }
+    }
+    render();
   });
 
   /* Si el enlace firmado caduca o el archivo cambia, se renueva solo una vez. */
