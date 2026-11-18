@@ -2,6 +2,18 @@
   "version": 1,
   "tracks": [
     {
+      "file": "3D_Box_Ease_In_01.wav",
+      "title": "3D_Box_Ease_In_01",
+      "artist": "Artista desconocido",
+      "ext": "wav",
+      "key": {
+        "salt": "d5766a6c10f237c0d55f67e4814cee31",
+        "iterations": 100000,
+        "hash": "dfad9bd337752b0096a1c0d125b1cdfe0ef37be82d86e3de3db2cafe34838ecf"
+      },
+      "locked": true
+    },
+    {
       "file": "Joss Giant Ft LH Shango.mp3",
       "title": "Joss Giant Ft LH Shango",
       "artist": "Artista desconocido",
