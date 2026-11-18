@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-18T05:19:43.673Z",
+  "updatedAt": "2026-11-18T05:41:39.598Z",
   "users": {
     "admin": {
       "salt": "126c11182df2b5a467c8e31c6604dd77",
@@ -9,10 +9,11 @@
       "owner": true
     },
     "jossgiant": {
-      "salt": "868ade574583bb94413f21c5b3008a4c",
+      "salt": "6ef4cc4567b43c2d10ecf99b395f421b",
       "iterations": 210000,
-      "hash": "84c24c8a7f9e48a6e6fa3b8bbf892624715ff8fd7cbd3270824e2da282fbb9d2",
-      "owner": false
+      "hash": "1fafaee92fe5cd4497792af3abdfb5a97a751c476a70961069b4d3c1a7158c78",
+      "createdAt": "2026-11-18T05:41:39.598Z",
+      "updatedAt": "2026-11-18T05:41:39.598Z"
     }
   }
 }
