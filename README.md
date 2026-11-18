@@ -91,6 +91,17 @@ host con Node.
 
 ## Administrar el sitio publicado (sin servidor)
 
+Hay dos modos, y el panel elige solo:
+
+### A) Proxy en Cloudflare (recomendado): nadie pega tokens
+
+Un Worker gratuito guarda el token de GitHub en el servidor; el navegador solo
+manda usuario y contraseña. Paso a paso en **[INSTALAR-PANEL.md](INSTALAR-PANEL.md)**.
+Cuando `shared/api-endpoint.js` tiene la URL del Worker, el panel muestra
+*“Conectado con tu cuenta · sin token”* y no aparece ninguna casilla de token.
+
+### B) Token en el navegador (por defecto, sin cuentas nuevas)
+
 El panel de `/admin` también funciona en GitHub Pages escribiendo al repositorio con
 un token personal:
 
