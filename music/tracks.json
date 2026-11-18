@@ -2,6 +2,20 @@
   "version": 1,
   "tracks": [
     {
+      "file": "tmp-c1.mp3",
+      "title": "Conc1",
+      "artist": "Test",
+      "ext": "mp3",
+      "url": "https://darkwaves-panel.profilebio-me.workers.dev/audio/tmp-c1.mp3",
+      "assetId": 764533687,
+      "key": {
+        "salt": "90abc02b1371aaa50f2dfe55d1a2025c",
+        "iterations": 100000,
+        "hash": "15784cc0577b86a2c3f41f4ddffec4c8aac884a06180c2be6cfd9664b91e2b57"
+      },
+      "locked": true
+    },
+    {
       "file": "tmp-c2.mp3",
       "title": "Conc2",
       "artist": "Test",
