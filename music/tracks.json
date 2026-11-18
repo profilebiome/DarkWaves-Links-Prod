@@ -2,6 +2,20 @@
   "version": 1,
   "tracks": [
     {
+      "file": "3D_Box_Ease_In_03.wav",
+      "title": "3d",
+      "artist": "Artista desconocido",
+      "ext": "wav",
+      "url": "https://darkwaves-panel.profilebio-me.workers.dev/audio/3D_Box_Ease_In_03.wav",
+      "assetId": 764451202,
+      "key": {
+        "salt": "db944d80d79efb27cf96cb19bc115569",
+        "iterations": 100000,
+        "hash": "17f108903581e7059c3021dacf9f8784977b32d44904f473ad069440b372a197"
+      },
+      "locked": true
+    },
+    {
       "file": "Joss Giant Ft LH Shango.mp3",
       "title": "Joss Giant Ft LH Shango",
       "artist": "Artista desconocido",
