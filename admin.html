@@ -571,8 +571,39 @@
     staticLogin, readStaticSession, clearStaticSession, makePasswordRecord, verifyPasswordRecord,
   } from "/shared/static-auth.js";
   import { openPending, uploadPageUrl, PENDING_MESSAGE } from "/shared/pending-store.js";
+  import { PANEL_ENDPOINT } from "/shared/api-endpoint.js";
 
   const $ = (selector) => document.querySelector(selector);
+
+  /* ---------------------------------------------------------------- */
+  /* Backend remoto (Cloudflare Worker)                                */
+  /* ---------------------------------------------------------------- */
+  // Con un Worker configurado, el panel del sitio publicado funciona
+  // completo: sube MP3, edita pistas, gestiona usuarios. La contraseña de
+  // cada administrador viaja en la cabecera de cada petición (HTTPS) y el
+  // token de GitHub se queda en el servidor.
+  const REMOTE = (PANEL_ENDPOINT || "").replace(/\/+$/, "");
+  const CRED_KEY = "dw:worker-cred";
+
+  function readRemoteCred() {
+    try {
+      const raw = sessionStorage.getItem(CRED_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function saveRemoteCred(cred) {
+    try {
+      if (cred) sessionStorage.setItem(CRED_KEY, JSON.stringify(cred));
+      else sessionStorage.removeItem(CRED_KEY);
+    } catch {
+      /* almacenamiento bloqueado */
+    }
+  }
+
+  const basicAuth = (cred) => `Basic ${btoa(`${cred.user}:${cred.password}`)}`;
 
   const el = {
     loginView: $("#login-view"),
@@ -623,6 +654,28 @@
   let sessionChecked = false;
 
   async function api(url, options = {}) {
+    if (REMOTE) {
+      const cred = readRemoteCred();
+      const headers = { ...(options.headers || {}) };
+      if (cred) headers.Authorization = basicAuth(cred);
+      let response;
+      try {
+        response = await fetch(`${REMOTE}${url}`, { ...options, headers, cache: "no-store" });
+      } catch {
+        throw new Error("No se pudo contactar con el servidor del panel");
+      }
+      let data = {};
+      const text = await response.text();
+      if (text) {
+        try { data = JSON.parse(text); } catch { data = {}; }
+      }
+      if (!response.ok) {
+        const error = new Error(data.error || `Error ${response.status}`);
+        error.status = response.status;
+        throw error;
+      }
+      return data;
+    }
     let response;
     try {
       response = await fetch(url, { credentials: "same-origin", cache: "no-store", ...options });
@@ -689,6 +742,22 @@
   /* ------------------------- sesión ------------------------- */
 
   async function checkSession() {
+    if (REMOTE) {
+      if (!readRemoteCred()) {
+        showLogin();
+        return;
+      }
+      try {
+        const data = await api("/api/admin/session");
+        showApp(data.user, data.owner);
+        await loadTracks();
+        await loadUsers();
+      } catch {
+        saveRemoteCred(null);
+        showLogin();
+      }
+      return;
+    }
     try {
       const data = await api("/api/admin/session");
       showApp(data.user, data.owner);
@@ -720,6 +789,22 @@
     event.preventDefault();
     setStatus(el.loginStatus, "Comprobando…");
     try {
+      if (REMOTE) {
+        saveRemoteCred({ user: el.loginUser.value.trim(), password: el.loginPass.value });
+        let data;
+        try {
+          data = await api("/api/admin/session");
+        } catch {
+          saveRemoteCred(null);
+          throw new Error("Usuario o contraseña incorrectos");
+        }
+        el.loginPass.value = "";
+        setStatus(el.loginStatus, "");
+        showApp(data.user, data.owner);
+        await loadTracks();
+        await loadUsers();
+        return;
+      }
       const response = await fetch("/api/admin/login", {
         method: "POST",
         credentials: "same-origin",
@@ -762,6 +847,7 @@
   el.logout.addEventListener("click", async () => {
     try { await api("/api/admin/logout", { method: "POST" }); } catch { /* nada */ }
     await clearStaticSession();
+    saveRemoteCred(null);
     state.tracks = [];
     showLogin();
   });
@@ -879,8 +965,14 @@
   function uploadWithProgress(formData, onProgress) {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/admin/tracks");
-      xhr.withCredentials = true;
+      xhr.open("POST", REMOTE ? `${REMOTE}/api/admin/tracks` : "/api/admin/tracks");
+      if (REMOTE) {
+        const cred = readRemoteCred();
+        if (!cred) return reject(new Error("Vuelve a iniciar sesión"));
+        xhr.setRequestHeader("Authorization", basicAuth(cred));
+      } else {
+        xhr.withCredentials = true;
+      }
       xhr.upload.addEventListener("progress", (event) => {
         if (event.lengthComputable) onProgress(event.loaded / event.total);
       });
