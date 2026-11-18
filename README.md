@@ -29,6 +29,10 @@ Abre http://localhost:4321. En este modo `/music` no se sirve y el audio sale en
 
 ## Panel de administración
 
+**En Windows, doble clic en `Iniciar-Panel.bat`**: arranca el servidor y abre el panel
+en el navegador (`http://localhost:4321/admin`), con el login dentro del propio panel.
+Desde la terminal también vale `npm run dev`.
+
 Con el servidor local (`npm run dev`) abre **http://localhost:4321/admin**.
 
 - **Credenciales iniciales:** la cuenta principal es `admin`. Cámbiale la clave en
