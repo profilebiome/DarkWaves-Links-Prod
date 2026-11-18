@@ -127,6 +127,7 @@ async function request(cfg, path, init = {}) {
     try {
       response = await fetch(`${apiBase()}${path}`, {
         ...init,
+        cache: "no-store",
         headers: {
           Authorization: `Bearer ${cfg.token}`,
           Accept: "application/vnd.github+json",
