@@ -8,3 +8,6 @@ data/
 
 .DS_Store
 Thumbs.db
+
+# Archivos temporales de pruebas
+.tmp-*
