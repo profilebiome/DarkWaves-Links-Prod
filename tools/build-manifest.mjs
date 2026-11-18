@@ -74,7 +74,12 @@ export function buildManifest() {
       if (year) track.year = year;
       if (description) track.description = description;
 
-      const key = (record.password && record.password.pbkdf2) || kept.key;
+      const stored = record.password;
+      const flat =
+        stored && !stored.pbkdf2 && stored.salt && stored.hash
+          ? { salt: stored.salt, iterations: Number(stored.iterations) || 210000, hash: stored.hash }
+          : null;
+      const key = (stored && stored.pbkdf2) || flat || kept.key;
       if (key && key.salt && key.hash && Number(key.iterations)) {
         track.key = { salt: key.salt, iterations: Number(key.iterations), hash: key.hash };
         track.locked = true;

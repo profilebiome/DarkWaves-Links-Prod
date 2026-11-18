@@ -600,7 +600,14 @@ function metaStore() {
         for (const field of ['album', 'genre', 'year', 'description']) {
           if (item[field]) record[field] = item[field];
         }
-        if (item.key && item.key.salt) record.password = { pbkdf2: item.key };
+        if (item.key && item.key.salt) {
+          record.password = {
+            salt: item.key.salt,
+            iterations: Number(item.key.iterations) || 210000,
+            hash: item.key.hash,
+            pbkdf2: item.key,
+          };
+        }
         tracks[item.file] = record;
       }
       if (Object.keys(tracks).length) data = { version: 1, tracks };

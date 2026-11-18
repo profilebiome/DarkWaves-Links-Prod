@@ -53,8 +53,8 @@ export function publishAccounts() {
   fs.mkdirSync(path.dirname(OUTPUT), { recursive: true });
   fs.writeFileSync(OUTPUT, `${JSON.stringify(out, null, 2)}\n`, 'utf8');
 
-  const count = Object.keys(out.users).length;
-  console.log(`shared/accounts.json: ${count} cuenta(s)${skipped.length ? ` — sin PBKDF2: ${skipped.join(', ')}` : ''}`);
+  const total = Object.keys(out.users).length;
+  console.log(`shared/accounts.json: ${total} cuenta(s)${skipped.length ? ` — sin PBKDF2: ${skipped.join(', ')}` : ''}`);
   return out;
 }
 
