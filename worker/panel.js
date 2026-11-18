@@ -391,7 +391,11 @@ export default {
       const fileName = decodeURIComponent(pathname.slice('/audio/'.length));
       const release = await ensureRelease(env);
       const assets = await gh(env, repoUrl(env, `/releases/${release.id}/assets?per_page=100`));
-      const asset = (assets || []).find((item) => item && item.name === fileName);
+      const normalize = (value) => String(value || '').replace(/[.\s_]+/g, ' ').trim().toLowerCase();
+      const wanted = normalize(fileName);
+      const asset =
+        (assets || []).find((item) => item && item.name === fileName) ||
+        (assets || []).find((item) => item && normalize(item.name) === wanted);
       if (!asset) return json({ error: 'Audio no encontrado' }, 404, headers);
       const range = request.headers.get('Range');
       const upstream = await fetch(`https://api.github.com/repos/${env.REPO || 'profilebiome/DarkWaves-Links-Prod'}/releases/assets/${asset.id}`, {
@@ -468,13 +472,16 @@ export default {
           length
         );
 
-        const stem = finalName.replace(/\.[a-z0-9]+$/i, '');
+        // GitHub puede renombrar el asset (los espacios pasan a puntos): se usa
+        // el nombre real para que la URL de audio siempre funcione.
+        const storedName = asset && asset.name ? asset.name : finalName;
+        const stem = storedName.replace(/\.[a-z0-9]+$/i, '');
         const entry = {
-          file: finalName,
+          file: storedName,
           title: String(params.get('title') || '').trim() || stem,
           artist: String(params.get('artist') || '').trim() || 'Artista desconocido',
           ext,
-          url: `${url.origin}/audio/${encodeURIComponent(finalName)}`,
+          url: `${url.origin}/audio/${encodeURIComponent(storedName)}`,
           assetId: asset.id,
           key: await makePassword(password),
           locked: true,
