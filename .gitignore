@@ -22,4 +22,4 @@ android-app/build/
 android-app/app/build/
 android-app/.gradle/
 android-app/local.properties
-*.apk
+# el APK publicado en la raíz sí se versiona (DarkWaves.apk)
