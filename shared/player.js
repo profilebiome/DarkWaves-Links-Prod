@@ -73,7 +73,10 @@ export class Player extends EventTarget {
     super();
     this.audio = new Audio();
     this.audio.preload = "metadata";
-    this.audio.crossOrigin = "same-origin";
+    // "anonymous" permite analizar el audio (visualizador) aunque venga de otro
+    // dominio con CORS, como el proxy /audio/ del panel.
+    this.audio.crossOrigin = "anonymous";
+    this.audio.preload = "metadata";
     this.audio.volume = this._readVolume();
     this.tracks = [];
     this.index = -1;

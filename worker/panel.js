@@ -339,6 +339,38 @@ export default {
       return json({ ok: true, service: 'darkwaves-panel' }, 200, headers);
     }
 
+    /* ------------------------- audio (público) ------------------------- */
+    // Sirve el MP3/WAV alojado en el Release con CORS y soporte de rangos:
+    // sin esto, Web Audio no puede analizar un archivo de otro dominio y el
+    // reproductor se queda en bucle de error.
+    if (pathname.startsWith('/audio/')) {
+      const fileName = decodeURIComponent(pathname.slice('/audio/'.length));
+      const release = await ensureRelease(env);
+      const assets = await gh(env, repoUrl(env, `/releases/${release.id}/assets?per_page=100`));
+      const asset = (assets || []).find((item) => item && item.name === fileName);
+      if (!asset) return json({ error: 'Audio no encontrado' }, 404, headers);
+      const range = request.headers.get('Range');
+      const upstream = await fetch(`https://api.github.com/repos/${env.REPO || 'profilebiome/DarkWaves-Links-Prod'}/releases/assets/${asset.id}`, {
+        headers: {
+          Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+          Accept: 'application/octet-stream',
+          'User-Agent': 'darkwaves-panel',
+          ...(range ? { Range: range } : {}),
+        },
+      });
+      const outHeaders = new Headers(headers);
+      outHeaders.set('Content-Type', asset.content_type && asset.content_type !== 'application/octet-stream'
+        ? asset.content_type
+        : (AUDIO_TYPE[(fileName.match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase()] || 'audio/mpeg'));
+      outHeaders.set('Accept-Ranges', 'bytes');
+      outHeaders.set('Cache-Control', 'public, max-age=3600');
+      for (const name of ['Content-Length', 'Content-Range']) {
+        const value = upstream.headers.get(name);
+        if (value) outHeaders.set(name, value);
+      }
+      return new Response(upstream.body, { status: upstream.status, headers: outHeaders });
+    }
+
     if (!pathname.startsWith('/api/admin/')) return json({ error: 'Ruta no encontrada' }, 404, headers);
     if (!env.GITHUB_TOKEN) return json({ error: 'Falta el secreto GITHUB_TOKEN en el Worker' }, 500, headers);
 
@@ -396,7 +428,7 @@ export default {
           title: String(params.get('title') || '').trim() || stem,
           artist: String(params.get('artist') || '').trim() || 'Artista desconocido',
           ext,
-          url: asset.browser_download_url,
+          url: `${url.origin}/audio/${encodeURIComponent(finalName)}`,
           assetId: asset.id,
           key: await makePassword(password),
           locked: true,
