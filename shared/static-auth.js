@@ -17,6 +17,7 @@ const SESSION_KEY = "dw:static-session";
 const GRANTS_KEY = "dw:static-grants";
 const SESSION_TTL = 12 * 60 * 60 * 1000;
 const GRANT_TTL = 12 * 60 * 60 * 1000;
+export const PBKDF2_ITERATIONS = 210000;
 
 const hex = (buffer) =>
   Array.from(new Uint8Array(buffer))
@@ -85,6 +86,17 @@ export async function verifyPasswordRecord(record, password) {
   } catch {
     return false;
   }
+}
+
+/** Genera un registro PBKDF2 nuevo (crear usuario o cambiar clave de pista). */
+export async function makePasswordRecord(password) {
+  const bytes = window.crypto.getRandomValues(new Uint8Array(16));
+  const salt = Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+  const hash = await derive(password, { salt, iterations: PBKDF2_ITERATIONS });
+  if (!hash) throw new Error("Este navegador no puede cifrar contraseñas (necesita HTTPS)");
+  return { salt, iterations: PBKDF2_ITERATIONS, hash };
 }
 
 async function fetchJSON(url) {

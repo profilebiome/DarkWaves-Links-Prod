@@ -68,7 +68,10 @@ if (usersArg) {
   const users = {};
   pairs.forEach((pair, index) => {
     if (!USER_NAME.test(pair.name)) fail(`Usuario inválido "${pair.name}": 3-32 caracteres, minúsculas, números, . _ -`);
-    if (pair.password.length < 8) fail(`La contraseña de "${pair.name}" necesita al menos 8 caracteres.`);
+    if (pair.password.length < 4) fail(`La contraseña de "${pair.name}" necesita al menos 4 caracteres.`);
+    if (pair.password.length < 8) {
+      console.warn(`  Aviso: la contraseña de "${pair.name}" es corta (${pair.password.length} caracteres).`);
+    }
     if (users[pair.name]) fail(`Usuario repetido: "${pair.name}".`);
     users[pair.name] = {
       ...makeRecord(pair.password),

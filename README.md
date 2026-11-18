@@ -31,8 +31,10 @@ Abre http://localhost:4321. En este modo `/music` no se sirve y el audio sale en
 
 Con el servidor local (`npm run dev`) abre **http://localhost:4321/admin**.
 
-- **Credenciales iniciales:** usuario `admin`, contraseña `darkwaves`. Cámbiala en
-  *Tu contraseña* la primera vez.
+- **Credenciales iniciales:** la cuenta principal es `admin`. Cámbiale la clave en
+  *Tu contraseña* la primera vez, y crea el resto de cuentas en *Usuarios del panel*.
+- Si `data/users.json` ya existe, las claves son las que se hayan guardado; para
+  fijarlas de nuevo: `npm run reset-accounts -- --users "admin:clave,jossgiant:otra"`.
 - Al arrancar por primera vez se crea `data/users.json` (contraseñas con `scrypt`).
   Si existe el antiguo `data/admin.json`, su cuenta se migra con la misma contraseña.
   Puedes fijar las credenciales iniciales con `DARKWAVES_ADMIN_USER` y
@@ -86,6 +88,33 @@ npm run reset-accounts -- --users "admin:ClaveLarga1,jossgiant:ClaveLarga2" --tr
 fuerza bruta offline) y los MP3 del repositorio también. Es una puerta de entrada,
 no seguridad real: usa contraseñas largas y, si el contenido importa, publica el
 host con Node.
+
+## Administrar el sitio publicado (sin servidor)
+
+El panel de `/admin` también funciona en GitHub Pages escribiendo al repositorio con
+un token personal:
+
+1. GitHub → *Settings* → *Developer settings* → **Personal access tokens → Fine-grained tokens**
+   → *Generate new token*.
+2. *Repository access*: **Only select repositories** → `DarkWaves-Links-Prod`.
+3. *Permissions → Repository permissions* → **Contents: Read and write**. Nada más.
+4. En `https://josspreview.profilebio.me/admin`, inicia sesión, pega el token en la
+   tarjeta **Repositorio GitHub** y pulsa *Conectar repositorio*.
+
+Con el repositorio conectado se habilita todo el panel: **subir música** con título,
+artista, álbum, género, año, descripción y contraseña de pista; **editar y borrar**
+pistas; **cambiar claves**; y **crear, borrar o restablecer usuarios** (solo la cuenta
+principal). Cada acción es un commit a `main`, así que GitHub Pages reconstruye el
+sitio en alrededor de un minuto.
+
+- El token se guarda solo en `localStorage` de ese navegador y las peticiones van
+directas a `api.github.com`: no pasa por ningún servidor intermedio. Para revocarlo,
+borra el token en GitHub.
+- Los permisos se aplican igual que en el servidor: la cuenta principal crea y borra
+usuarios; cualquier cuenta sube música y edita pistas.
+- Las cuentas creadas desde aquí viven en `shared/accounts.json` (hash PBKDF2) y las
+claves de pista en `music/tracks.json`. Los dos archivos son públicos: el sitio
+estático no puede esconderlos. Con el host Node, en cambio, todo queda en `data/`.
 
 ## Protección anti-captura
 

@@ -419,9 +419,32 @@
     <p class="sub">Sube pistas a <code>music/</code>, define título, artista, álbum y todos sus datos, y protege cada track con su propia contraseña.</p>
 
     <div class="notice" id="static-note" hidden>
-      Modo estático (GitHub Pages): has entrado con tu cuenta, pero aquí la biblioteca es
-      <strong>solo lectura</strong>. Para subir, editar o gestionar usuarios abre el panel con el
-      servidor: <code>npm run dev</code> o el host con Node (ver <code>DESPLIEGUE.md</code>).
+      Estás en el sitio publicado (GitHub Pages), sin servidor. Conecta el repositorio abajo con un token
+      para subir música, editar pistas y gestionar usuarios: cada cambio se guarda como commit y la web se
+      actualiza sola. También puedes abrir el panel con el servidor local: <code>npm run dev</code>.
+    </div>
+
+    <div class="card" id="gh-card" hidden>
+      <div class="card-head">
+        <span class="bar"></span><h2>Repositorio GitHub</h2><small id="gh-state">sin conectar</small>
+      </div>
+      <p class="hint">
+        GitHub no permite escribir sin credenciales. Crea un token <em>fine-grained</em> en
+        GitHub → Settings → Developer settings → Personal access tokens, con
+        <code>Repository access: solo este repositorio</code> y permiso
+        <code>Contents: Read and write</code>. Pégalo aquí: queda guardado solo en este navegador.
+      </p>
+      <div class="grid">
+        <label class="wide"><span>Token</span><input id="gh-token" type="password" autocomplete="off" placeholder="github_pat_…"></label>
+        <label><span>Propietario</span><input id="gh-owner" type="text" autocomplete="off" spellcheck="false"></label>
+        <label><span>Repositorio</span><input id="gh-repo" type="text" autocomplete="off" spellcheck="false"></label>
+        <label><span>Rama</span><input id="gh-branch" type="text" autocomplete="off" spellcheck="false" placeholder="main"></label>
+      </div>
+      <div class="actions">
+        <button class="primary" type="button" id="gh-connect">Conectar repositorio</button>
+        <button class="ghost" type="button" id="gh-disconnect" hidden>Desconectar</button>
+        <span class="status" id="gh-status"></span>
+      </div>
     </div>
 
     <div class="card" id="upload-card">
@@ -566,6 +589,10 @@
   import {
     staticLogin, readStaticSession, clearStaticSession,
   } from "/shared/static-auth.js";
+  import { staticApi, staticUpload, isConnected } from "/shared/static-panel.js";
+  import {
+    defaultConfig, readConfig, saveConfig, clearConfig, testConnection,
+  } from "/shared/github-store.js";
 
   const $ = (selector) => document.querySelector(selector);
 
@@ -578,6 +605,15 @@
     staticNote: $("#static-note"),
     uploadCard: $("#upload-card"),
     passCard: $("#pass-card"),
+    ghCard: $("#gh-card"),
+    ghToken: $("#gh-token"),
+    ghOwner: $("#gh-owner"),
+    ghRepo: $("#gh-repo"),
+    ghBranch: $("#gh-branch"),
+    ghConnect: $("#gh-connect"),
+    ghDisconnect: $("#gh-disconnect"),
+    ghStatus: $("#gh-status"),
+    ghState: $("#gh-state"),
     loginForm: $("#login-form"),
     loginUser: $("#login-user"),
     loginPass: $("#login-pass"),
@@ -625,6 +661,12 @@
       el.serverNote.hidden = false;
       throw new Error("Servidor no disponible");
     }
+
+    // GitHub Pages: GET responde 404 y POST 405 porque no hay backend.
+    if (response.status === 404 || response.status === 405) {
+      state.static = true;
+      return staticApi(url, options);
+    }
     let data = {};
     const text = await response.text();
     if (text) {
@@ -636,6 +678,20 @@
       throw error;
     }
     return data;
+  }
+
+  /** Se puede editar cuando hay servidor o cuando el repo está conectado. */
+  function canEdit() {
+    return !state.static || isConnected();
+  }
+
+  function applyPermissions() {
+    const editable = canEdit();
+    el.staticNote.hidden = editable;
+    el.uploadCard.hidden = !editable;
+    el.passCard.hidden = !editable;
+    el.usersCard.hidden = !state.owner || !editable;
+    el.ghCard.hidden = !state.static;
   }
 
   function bytes(value) {
@@ -659,11 +715,8 @@
     el.serverNote.hidden = true;
     state.me = user;
     state.owner = Boolean(owner);
-    el.usersCard.hidden = !state.owner || state.static;
-    // Sin backend no hay subida ni cambios: se ocultan esos bloques.
-    el.staticNote.hidden = !state.static;
-    el.uploadCard.hidden = state.static;
-    el.passCard.hidden = state.static;
+    paintGithub();
+    applyPermissions();
   }
 
   function showLogin() {
@@ -675,6 +728,7 @@
     state.static = false;
     el.usersCard.hidden = true;
     el.staticNote.hidden = true;
+    el.ghCard.hidden = true;
     el.uploadCard.hidden = false;
     el.passCard.hidden = false;
   }
@@ -684,24 +738,13 @@
   async function checkSession() {
     try {
       const data = await api("/api/admin/session");
+      if (data.static) state.static = true;
       showApp(data.user, data.owner);
       await loadTracks();
       await loadUsers();
     } catch (error) {
       if (error.status === 401) {
         showLogin();
-        return;
-      }
-      if (error.status === 404) {
-        // Sin backend (GitHub Pages): la sesión vive en el navegador.
-        const session = await readStaticSession();
-        if (!session) {
-          el.serverNote.hidden = false;
-          return;
-        }
-        state.static = true;
-        showApp(session.user, session.owner);
-        await loadTracks();
         return;
       }
       if (error.message === "Servidor no disponible") el.serverNote.hidden = false;
@@ -761,7 +804,6 @@
   /* ------------------------- biblioteca ------------------------- */
 
   async function loadTracks() {
-    if (state.static) return loadStaticTracks();
     setStatus(el.listStatus, "Cargando…");
     try {
       const data = await api("/api/admin/tracks");
@@ -774,6 +816,8 @@
         showLogin();
         return;
       }
+      state.tracks = [];
+      renderTracks();
       setStatus(el.listStatus, error.message, "error");
     }
   }
@@ -814,8 +858,8 @@
       cellSize.textContent = bytes(track.size);
 
       const cellActions = document.createElement("td");
-      if (state.static) {
-        // Sin backend no hay edición: la tabla queda en solo lectura.
+      if (!canEdit()) {
+        // Sin repositorio conectado no hay edición: la tabla queda en solo lectura.
         tr.append(cellTitle, cellArtist, cellAlbum, cellYear, cellLock, cellSize, cellActions);
         el.rows.append(tr);
         continue;
@@ -844,38 +888,67 @@
     }
   }
 
-  /* Modo estático (GitHub Pages): la biblioteca sale de music/tracks.json. */
-  async function loadStaticTracks() {
-    setStatus(el.listStatus, "Cargando…");
-    try {
-      const response = await fetch("music/tracks.json", { cache: "no-store" });
-      if (!response.ok) throw new Error(`No se pudo leer la biblioteca (${response.status})`);
-      const data = await response.json();
-      state.tracks = (Array.isArray(data.tracks) ? data.tracks : []).map((track) => ({
-        id: track.file,
-        file: track.file,
-        title: track.title,
-        artist: track.artist,
-        album: track.album || "",
-        genre: track.genre || "",
-        year: track.year || "",
-        description: track.description || "",
-        ext: track.ext,
-        size: 0,
-        hasPassword: Boolean(track.key),
-      }));
-      renderTracks();
-      setStatus(el.listStatus, "Solo lectura: abre el servidor para editar", "");
-    } catch (error) {
-      setStatus(el.listStatus, error.message, "error");
-    }
+  /* ---------------- repositorio GitHub (administración sin servidor) ---------------- */
+
+  function paintGithub() {
+    el.ghCard.hidden = !state.static;
+    const cfg = readConfig();
+    const shown = cfg || defaultConfig();
+    el.ghOwner.value = shown.owner;
+    el.ghRepo.value = shown.repo;
+    el.ghBranch.value = shown.branch;
+    el.ghToken.value = "";
+    el.ghToken.placeholder = cfg ? "conectado · pega otro token para cambiarlo" : "github_pat_…";
+    el.ghState.textContent = cfg ? `${cfg.owner}/${cfg.repo}` : "sin conectar";
+    el.ghDisconnect.hidden = !cfg;
+    return cfg;
   }
+
+  el.ghConnect.addEventListener("click", async () => {
+    const token = el.ghToken.value.trim();
+    if (!token) {
+      setStatus(el.ghStatus, "Pega el token primero", "error");
+      return;
+    }
+    setStatus(el.ghStatus, "Comprobando token…");
+    try {
+      const cfg = saveConfig({
+        token,
+        owner: el.ghOwner.value,
+        repo: el.ghRepo.value,
+        branch: el.ghBranch.value,
+      });
+      const repo = await testConnection(cfg);
+      setStatus(el.ghStatus, `Conectado a ${repo.full_name || `${cfg.owner}/${cfg.repo}`}`, "ok");
+      paintGithub();
+      applyPermissions();
+      await loadTracks();
+      await loadUsers();
+    } catch (error) {
+      clearConfig();
+      paintGithub();
+      applyPermissions();
+      setStatus(el.ghStatus, error.message, "error");
+    }
+  });
+
+  el.ghDisconnect.addEventListener("click", () => {
+    clearConfig();
+    setStatus(el.ghStatus, "Desconectado", "");
+    paintGithub();
+    applyPermissions();
+    state.tracks = [];
+    renderTracks();
+    setStatus(el.listStatus, "Conecta el repositorio para administrar", "");
+  });
 
   el.refresh.addEventListener("click", loadTracks);
 
   /* ------------------------- subida ------------------------- */
 
   function uploadWithProgress(formData, onProgress) {
+    // En GitHub Pages la subida va directo a la API de GitHub, con commits.
+    if (state.static) return staticUpload(formData, onProgress);
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", "/api/admin/tracks");
@@ -1070,7 +1143,7 @@
   }
 
   async function loadUsers() {
-    if (state.static) {
+    if (!state.owner || !canEdit()) {
       el.usersCard.hidden = true;
       return;
     }
