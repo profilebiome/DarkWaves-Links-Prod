@@ -1256,6 +1256,10 @@ async function handleApi(req, res, pathname) {
     if (method === 'POST') {
       if (!sameOrigin(req)) return sendJSON(res, 403, { error: 'Origen no permitido' });
       clearTimeout(syncTimer);
+      // Si hay una publicación en curso, se espera a que termine.
+      for (let intento = 0; intento < 30 && syncBusy; intento += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
       await runSync();
     }
     return sendJSON(res, 200, {

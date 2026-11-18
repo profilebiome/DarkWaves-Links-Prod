@@ -29,6 +29,15 @@ Abre http://localhost:4321. En este modo `/music` no se sirve y el audio sale en
 
 ## Panel de administración
 
+**Panel público (funciona sin depender de tu PC):**
+<https://darkwaves-links.onrender.com/admin> — entrada con `admin` / `admin`.
+Todo lo que guardas ahí (subir música, editar, claves de pista, usuarios) se escribe
+en este repositorio con la API de GitHub y el sitio de GitHub Pages se actualiza en
+un minuto. El token vive en el servidor de Render; el navegador no pide nada.
+
+**En tu PC:** doble clic en `Iniciar-Panel.bat` → `http://localhost:4321/admin`
+(publica los cambios con tu git local).
+
 **En Windows, doble clic en `Iniciar-Panel.bat`**: arranca el servidor y abre el panel
 en el navegador (`http://localhost:4321/admin`), con el login dentro del propio panel.
 Desde la terminal también vale `npm run dev`.
