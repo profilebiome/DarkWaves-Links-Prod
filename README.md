@@ -33,6 +33,12 @@ Abre http://localhost:4321. En este modo `/music` no se sirve y el audio sale en
 en el navegador (`http://localhost:4321/admin`), con el login dentro del propio panel.
 Desde la terminal también vale `npm run dev`.
 
+> **Para tener este mismo panel completo en el dominio público** (subir MP3, crear
+> usuarios, claves) hace falta que el servidor esté alojado: GitHub Pages no ejecuta
+> código. Está todo listo y se despliega con un botón, conectado a este repositorio:
+> **[DESPLIEGUE.md](DESPLIEGUE.md)** →
+> [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/profilebiome/DarkWaves-Links-Prod)
+
 ### Lo que guardas en el panel se publica solo en GitHub
 
 Cada cambio hecho en el panel (subir pista, editar, crear usuarios, poner o quitar

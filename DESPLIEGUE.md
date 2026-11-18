@@ -1,11 +1,24 @@
 # Desplegar DarkWaves con backend
 
-Pasos que solo puedes hacer tú (dashboard del host y DNS). El código ya está
-preparado: `render.yaml`, `Dockerfile` y el servidor leyendo `PORT`,
-`DARKWAVES_DATA_DIR` y `DARKWAVES_MUSIC_DIR`.
+**El panel completo (subir MP3, crear usuarios, claves) no puede vivir dentro de
+GitHub Pages**, porque Pages solo entrega archivos y no ejecuta código. El servidor
+que sí lo hace es el mismo que ya funciona en tu PC (`server.mjs`); aquí se publica
+en un host conectado a tu repositorio de GitHub.
+
+Despliegue en 3 clics (sin tarjeta, sin tokens en el navegador):
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/profilebiome/DarkWaves-Links-Prod)
+
+1. Entra con **Sign in with GitHub** (no pide contraseña nueva ni tarjeta).
+2. Acepta el `render.yaml` (te pedirá `DARKWAVES_ADMIN_USER` y
+   `DARKWAVES_ADMIN_PASSWORD`: la cuenta principal del panel).
+3. Cuando diga *Live*, tu panel completo estará en esa URL y podrás apuntarle el
+   dominio `josspreview.profilebio.me` (paso 4 de esta guía).
 
 Resultado esperado: `node tools/check-deploy.mjs https://josspreview.profilebio.me`
-termina con **BACKEND ACTIVO**.
+termina con **BACKEND ACTIVO**. Si prefieres que lo despliegue yo, pásame una llave
+API del host (`CF`/`Render`) y lo hago en un comando — el token queda en el servidor,
+nunca en el sitio.
 
 ---
 
