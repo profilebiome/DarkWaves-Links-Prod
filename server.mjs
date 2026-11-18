@@ -72,6 +72,128 @@ function queueSync(message) {
   syncTimer = setTimeout(() => { runSync(); }, 1200);
 }
 
+/* ------------------------------------------------------------------ */
+/* Publicar por la API de GitHub (hosts sin git, como Render) */
+/* ------------------------------------------------------------------ */
+
+const GH_TOKEN = process.env.DARKWAVES_GITHUB_TOKEN || '';
+const GH_REPO = process.env.DARKWAVES_REPO || 'profilebiome/DarkWaves-Links-Prod';
+const GH_BRANCH = process.env.DARKWAVES_BRANCH || 'main';
+const AUDIO_EXT = /\.(mp3|wav|ogg|oga|m4a|aac|flac|opus|webm)$/i;
+
+async function github(pathname, init = {}) {
+  const response = await fetch(`https://api.github.com/repos/${GH_REPO}${pathname}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${GH_TOKEN}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': 'darkwaves-panel',
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+    },
+  });
+  const text = await response.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
+  if (!response.ok) {
+    const detail = data && data.message ? data.message : `${response.status}`;
+    throw new Error(`GitHub ${response.status}: ${detail}`);
+  }
+  return data;
+}
+
+const blobSha = (buffer) =>
+  crypto.createHash('sha1').update(`blob ${buffer.length}\0`).update(buffer).digest('hex');
+
+async function remoteFiles(dir) {
+  try {
+    const list = await github(`/contents/${dir}?ref=${GH_BRANCH}`);
+    const map = new Map();
+    for (const item of Array.isArray(list) ? list : []) {
+      if (item && item.type === 'file') map.set(item.name, item.sha);
+    }
+    return map;
+  } catch (error) {
+    if (/404/.test(error.message)) return new Map();
+    throw error;
+  }
+}
+
+/** Sube/borra lo necesario para que el repo refleje el panel. */
+async function publishViaApi() {
+  if (!GH_TOKEN) throw new Error('Falta DARKWAVES_GITHUB_TOKEN en el servidor');
+
+  const changes = [];
+
+  // Música y playlist.
+  const remote = await remoteFiles('music');
+  let entries = [];
+  try {
+    entries = fs.readdirSync(MUSIC_DIR, { withFileTypes: true });
+  } catch {
+    entries = [];
+  }
+  const local = new Set();
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    if (!AUDIO_EXT.test(entry.name) && entry.name !== 'tracks.json') continue;
+    local.add(entry.name);
+    const buffer = fs.readFileSync(path.join(MUSIC_DIR, entry.name));
+    if (remote.get(entry.name) === blobSha(buffer)) continue;
+    changes.push({ path: `music/${entry.name}`, base64: buffer.toString('base64') });
+  }
+  for (const [name, sha] of remote) {
+    if (!local.has(name) && (AUDIO_EXT.test(name) || name === 'tracks.json')) {
+      changes.push({ path: `music/${name}`, sha, remove: true });
+    }
+  }
+
+  // Cuentas publicadas (login del sitio y del host).
+  const accountsPath = path.join(PUBLIC_DIR, 'shared', 'accounts.json');
+  if (fs.existsSync(accountsPath)) {
+    const buffer = fs.readFileSync(accountsPath);
+    const current = await github(`/contents/shared/accounts.json?ref=${GH_BRANCH}`).catch(() => null);
+    const currentSha = current && current.sha ? current.sha : null;
+    if (!currentSha || currentSha !== blobSha(buffer)) {
+      changes.push({ path: 'shared/accounts.json', base64: buffer.toString('base64'), sha: currentSha });
+    }
+  }
+
+  if (!changes.length) {
+    lastSync = { at: Date.now(), ok: true, message: 'Sin cambios pendientes' };
+    return;
+  }
+
+  // sha de los archivos existentes para actualizarlos (la API lo exige).
+  for (const change of changes) {
+    if (change.remove) continue;
+    if (change.sha) continue;
+    const existing = await github(`/contents/${change.path}?ref=${GH_BRANCH}`).catch(() => null);
+    change.sha = existing && existing.sha ? existing.sha : null;
+  }
+
+  const commitMessage = syncMessage || 'Panel: actualizar el sitio';
+  for (const change of changes) {
+    if (change.remove) {
+      await github(`/contents/${change.path}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ message: `${commitMessage} (borrar ${path.basename(change.path)})`, sha: change.sha, branch: GH_BRANCH }),
+      });
+      continue;
+    }
+    const body = { message: `${commitMessage} (${path.basename(change.path)})`, content: change.base64, branch: GH_BRANCH };
+    if (change.sha) body.sha = change.sha;
+    await github(`/contents/${change.path}`, { method: 'PUT', body: JSON.stringify(body) });
+  }
+
+  lastSync = { at: Date.now(), ok: true, message: `${commitMessage} · ${changes.length} archivo(s)` };
+  console.log(`  ↳ Publicado en GitHub (${changes.length} archivo/s): ${commitMessage}`);
+}
+
 async function runSync() {
   if (syncBusy) {
     queueSync(syncMessage);
@@ -80,6 +202,12 @@ async function runSync() {
   syncBusy = true;
   const message = syncMessage || 'Panel: actualizar el sitio';
   try {
+    // Sin repositorio git (Render entrega el código sin .git): API de GitHub.
+    if (!fs.existsSync(path.join(ROOT, '.git'))) {
+      await publishViaApi();
+      return;
+    }
+
     const add = await runGit(['add', '-A', 'music', 'shared']);
     if (add.code !== 0) throw new Error((add.stderr || add.stdout || 'git add fallo').trim());
 
