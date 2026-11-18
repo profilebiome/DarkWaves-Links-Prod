@@ -811,6 +811,19 @@ function saveMeta() {
   queueSync('Panel: pistas y claves');
 }
 
+/* Pistas publicadas en music/tracks.json (incluye las subidas desde la web,
+   que se sirven desde el Worker con su propia URL). */
+function publishedTracks() {
+  const data = readJSONFile(path.join(MUSIC_DIR, 'tracks.json'), null);
+  const map = new Map();
+  if (!data || !Array.isArray(data.tracks)) return map;
+  for (const item of data.tracks) {
+    if (!item || !item.file) continue;
+    map.set(item.file, item);
+  }
+  return map;
+}
+
 function fileTracks() {
   let entries = [];
   try {
@@ -819,7 +832,7 @@ function fileTracks() {
     entries = [];
   }
 
-  return entries
+  const local = entries
     .filter((entry) => entry.isFile() && AUDIO_TYPES.has(path.extname(entry.name).toLowerCase()))
     .map((entry) => {
       const ext = path.extname(entry.name).toLowerCase();
@@ -849,26 +862,61 @@ function fileTracks() {
         size,
         mtime,
         file: path.join(MUSIC_DIR, entry.name),
+        remote: false,
       };
     });
+
+  // Pistas subidas desde la web: están en el Release y se sirven desde el Worker.
+  const onDisk = new Set(local.map((track) => track.fileName));
+  for (const [fileName, item] of publishedTracks()) {
+    if (onDisk.has(fileName)) continue;
+    if (!item.url) continue;
+    const ext = path.extname(fileName).toLowerCase();
+    local.push({
+      id: idFor(fileName),
+      fileName,
+      ext: ext.slice(1),
+      title: item.title || fileName,
+      artist: item.artist || 'Artista desconocido',
+      size: 0,
+      mtime: 0,
+      file: '',
+      remote: true,
+      remoteUrl: item.url,
+    });
+  }
+
+  return local;
 }
 
 function buildTracks({ grants = new Set(), adminView = false } = {}) {
   const meta = metaStore().tracks;
   return fileTracks()
     .map((track) => {
+      const published = publishedTracks().get(track.fileName) || null;
       const record = meta[track.fileName] || {};
-      const hasPassword = Boolean(record.password && record.password.hash);
+      // Las pistas subidas desde la web traen sus datos (y su clave) publicados.
+      const password =
+        record.password ||
+        (published && published.key
+          ? {
+              salt: published.key.salt,
+              iterations: Number(published.key.iterations) || 100000,
+              hash: published.key.hash,
+              pbkdf2: published.key,
+            }
+          : null);
+      const hasPassword = Boolean(password && password.hash);
       // La página es pública, pero ninguna pista se escucha sin la clave del panel.
       const locked = !hasPassword || !grants.has(track.id);
       const view = {
         id: track.id,
-        title: record.title || track.title,
-        artist: record.artist || track.artist,
-        album: record.album || '',
-        genre: record.genre || '',
-        year: record.year || '',
-        description: record.description || '',
+        title: record.title || (published && published.title) || track.title,
+        artist: record.artist || (published && published.artist) || track.artist,
+        album: record.album || (published && published.album) || '',
+        genre: record.genre || (published && published.genre) || '',
+        year: record.year || (published && published.year) || '',
+        description: record.description || (published && published.description) || '',
         ext: track.ext,
         size: track.size,
         locked,
@@ -880,7 +928,9 @@ function buildTracks({ grants = new Set(), adminView = false } = {}) {
         view.addedAt = record.addedAt || '';
       }
       if (adminView || !locked) {
-        view.url = `/stream/${track.id}?t=${encodeURIComponent(signStream(track.id))}`;
+        view.url = track.remote && track.remoteUrl
+          ? track.remoteUrl
+          : `/stream/${track.id}?t=${encodeURIComponent(signStream(track.id))}`;
       }
       return view;
     })
@@ -1262,12 +1312,23 @@ async function handleApi(req, res, pathname) {
     const file = fileTracks().find((item) => item.id === id);
     if (!file) return sendJSON(res, 404, { error: 'Pista no encontrada' });
     const record = metaStore().tracks[file.fileName] || {};
-    if (!record.password || !record.password.hash) {
+    const published = publishedTracks().get(file.fileName) || null;
+    const passwordRecord =
+      (record.password && record.password.hash ? record.password : null) ||
+      (published && published.key
+        ? {
+            salt: published.key.salt,
+            iterations: Number(published.key.iterations) || 100000,
+            hash: published.key.hash,
+            pbkdf2: published.key,
+          }
+        : null);
+    if (!passwordRecord) {
       return sendJSON(res, 409, {
         error: 'Esta pista todavía no tiene contraseña. Asígnale una desde el panel de administración.',
       });
     }
-    if (!verifyPassword(password, record.password)) {
+    if (!verifyPassword(password, passwordRecord)) {
       return sendJSON(res, 401, { error: 'Contraseña incorrecta' });
     }
     attempts.delete(`unlock:${clientIp(req)}`);
