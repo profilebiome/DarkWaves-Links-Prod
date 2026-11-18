@@ -185,6 +185,14 @@ export class Player extends EventTarget {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return null;
     this._ctx = new AudioCtx();
+    // El contexto arranca "suspended" hasta que hay un gesto del usuario: si se
+    // queda así, el navegador pausa el audio. Se reanuda en cuanto se pueda.
+    if (this._ctx.state === "suspended") this._ctx.resume().catch(() => {});
+    document.addEventListener(
+      "pointerdown",
+      () => { if (this._ctx && this._ctx.state === "suspended") this._ctx.resume().catch(() => {}); },
+      { passive: true }
+    );
     const source = this._ctx.createMediaElementSource(this.audio);
     this._analyser = this._ctx.createAnalyser();
     this._analyser.fftSize = 256;
