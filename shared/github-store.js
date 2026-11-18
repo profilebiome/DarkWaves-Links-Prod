@@ -12,9 +12,44 @@
  */
 
 import { SHARED_TOKEN, SHARED_OWNER, SHARED_REPO, SHARED_BRANCH } from "./repo-token.js";
+import { PANEL_ENDPOINT } from "./api-endpoint.js";
 
 const STORE_KEY = "dw:github";
+const CRED_KEY = "dw:panel-cred";
 const DEFAULT_REPO = { owner: "profilebiome", repo: "DarkWaves-Links-Prod", branch: "main" };
+
+/** ¿Hay servidor del panel (Worker) configurado? Entonces nadie pega tokens. */
+export const hasPanelProxy = () => Boolean(PANEL_ENDPOINT);
+
+let panelCredentials = null;
+
+/** Credenciales del panel para el Worker (se guardan solo en la pestaña). */
+export function setPanelCredentials(user, password) {
+  panelCredentials = user && password ? { user: String(user), password: String(password) } : null;
+  try {
+    if (panelCredentials) window.sessionStorage.setItem(CRED_KEY, JSON.stringify(panelCredentials));
+    else window.sessionStorage.removeItem(CRED_KEY);
+  } catch {
+    /* almacenamiento bloqueado */
+  }
+}
+
+export function readPanelCredentials() {
+  if (panelCredentials) return panelCredentials;
+  try {
+    const raw = window.sessionStorage.getItem(CRED_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.user && parsed.password) {
+        panelCredentials = parsed;
+        return parsed;
+      }
+    }
+  } catch {
+    /* nada */
+  }
+  return null;
+}
 
 export const apiBase = () =>
   (typeof window !== "undefined" && window.DW_GITHUB_API) || "https://api.github.com";
@@ -24,6 +59,17 @@ export function defaultConfig() {
 }
 
 export function readConfig() {
+  // Con servidor del panel no hace falta token en el navegador.
+  if (hasPanelProxy()) {
+    return {
+      token: "panel-proxy",
+      owner: DEFAULT_REPO.owner,
+      repo: DEFAULT_REPO.repo,
+      branch: DEFAULT_REPO.branch,
+      shared: true,
+      proxy: true,
+    };
+  }
   try {
     const raw = window.localStorage.getItem(STORE_KEY);
     if (raw) {
@@ -147,6 +193,34 @@ function httpError(status, data) {
 async function request(cfg, path, init = {}) {
   let response = null;
   let lastError = null;
+
+  // Con servidor del panel (Worker), la petición va al proxy con las credenciales
+  // del usuario: el token de GitHub nunca sale del servidor.
+  if (hasPanelProxy()) {
+    const creds = readPanelCredentials();
+    if (!creds) throw httpError("Vuelve a iniciar sesión para administrar", 401);
+    let rawBody = null;
+    if (init.body) rawBody = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
+    try {
+      response = await fetch(`${PANEL_ENDPOINT.replace(/\/+$/, "")}/proxy`, {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user: creds.user, password: creds.password, path, method: init.method || "GET", body: rawBody }),
+      });
+    } catch {
+      throw new Error("No se pudo contactar con el servidor del panel");
+    }
+    const text = await response.text();
+    let data = null;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = null;
+    }
+    if (!response.ok) throw httpError(response.status, data);
+    return data;
+  }
 
   // GitHub devuelve 502/503 puntuales (balanceo o límite secundario): se reintenta.
   for (let attempt = 0; attempt < 3; attempt += 1) {

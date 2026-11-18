@@ -596,6 +596,7 @@
   import { staticApi, staticUpload, isConnected } from "/shared/static-panel.js";
   import {
     defaultConfig, readConfig, saveConfig, clearConfig, testConnection, verifyWriteAccess,
+    hasPanelProxy, setPanelCredentials, readPanelCredentials,
   } from "/shared/github-store.js";
 
   const $ = (selector) => document.querySelector(selector);
@@ -746,6 +747,12 @@
     try {
       const data = await api("/api/admin/session");
       if (data.static) state.static = true;
+      // Con servidor del panel hace falta la contraseña de la sesión para firmar
+      // las peticiones; si la pestaña se cerró, se vuelve a pedir el login.
+      if (data.static && hasPanelProxy() && !readPanelCredentials()) {
+        showLogin();
+        return;
+      }
       showApp(data.user, data.owner);
       await loadTracks();
       await loadUsers();
@@ -782,6 +789,8 @@
       if (response.status === 404 || response.status === 405) {
         const account = await staticLogin(el.loginUser.value, el.loginPass.value);
         if (!account) throw new Error("Usuario o contraseña incorrectos");
+        // El Worker verifica esta contraseña en cada petición: el token no viaja.
+        setPanelCredentials(account.user, el.loginPass.value);
         el.loginPass.value = "";
         setStatus(el.loginStatus, "");
         state.static = true;
@@ -804,6 +813,7 @@
   el.logout.addEventListener("click", async () => {
     try { await api("/api/admin/logout", { method: "POST" }); } catch { /* nada */ }
     await clearStaticSession();
+    setPanelCredentials(null);
     state.tracks = [];
     showLogin();
   });
@@ -899,6 +909,7 @@
 
   function paintGithub() {
     el.ghCard.hidden = !state.static;
+    const proxy = hasPanelProxy();
     const cfg = readConfig();
     const shown = cfg || defaultConfig();
     el.ghOwner.value = shown.owner;
@@ -907,14 +918,15 @@
     el.ghToken.value = "";
     el.ghToken.placeholder = cfg ? "conectado · pega otro token para cambiarlo" : "github_pat_…";
 
-    // Con token configurado (del sitio o de este navegador) no se piden datos.
-    const configured = Boolean(cfg) && !state.ghEditing;
+    // Con servidor del panel no se pide ningún token.
+    const configured = proxy || (Boolean(cfg) && !state.ghEditing);
     el.ghFields.hidden = configured;
     el.ghConnect.hidden = configured;
-    el.ghChange.hidden = !cfg || state.ghEditing;
-    el.ghDisconnect.hidden = !cfg || Boolean(cfg && cfg.shared) || state.ghEditing;
+    el.ghChange.hidden = proxy || !cfg || state.ghEditing;
+    el.ghDisconnect.hidden = proxy || !cfg || Boolean(cfg && cfg.shared) || state.ghEditing;
 
-    if (cfg && cfg.shared) el.ghState.textContent = "token del sitio";
+    if (proxy) el.ghState.textContent = "servidor del panel";
+    else if (cfg && cfg.shared) el.ghState.textContent = "token del sitio";
     else if (cfg) el.ghState.textContent = `${cfg.owner}/${cfg.repo}`;
     else el.ghState.textContent = "sin conectar";
 
@@ -924,6 +936,12 @@
   /** Al entrar, usa el token guardado y deja el panel listo sin pedir nada. */
   async function autoConnect() {
     if (!state.static) return;
+    if (hasPanelProxy()) {
+      paintGithub();
+      applyPermissions();
+      setStatus(el.ghStatus, "Conectado con tu cuenta · sin token", "ok");
+      return;
+    }
     const cfg = paintGithub();
     applyPermissions();
     if (!cfg) {
@@ -1127,6 +1145,7 @@
       });
       el.passForm.reset();
       setStatus(el.passStatus, "Contraseña actualizada", "ok");
+      if (hasPanelProxy()) setPanelCredentials(state.me, el.passNext.value);
     } catch (error) {
       setStatus(el.passStatus, error.message, "error");
     }
