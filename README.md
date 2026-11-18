@@ -33,6 +33,23 @@ Abre http://localhost:4321. En este modo `/music` no se sirve y el audio sale en
 en el navegador (`http://localhost:4321/admin`), con el login dentro del propio panel.
 Desde la terminal también vale `npm run dev`.
 
+### Lo que guardas en el panel se publica solo en GitHub
+
+Cada cambio hecho en el panel (subir pista, editar, crear usuarios, poner o quitar
+claves) se guarda en tu PC y el servidor hace `git add` + `commit` + `push` con las
+credenciales de git que ya tienes configuradas. El sitio de GitHub Pages se actualiza
+en alrededor de un minuto y el navegador **nunca pide tokens**.
+
+- Estado de la última publicación: `GET /api/admin/publish` (o pulsando *Actualizar*).
+- Se desactiva con `DARKWAVES_PUSH=0 npm run dev`.
+- Autor de los commits: el de tu `git config` (`profilebiome`).
+
+### Administrar desde el móvil
+
+Doble clic en `Iniciar-Panel-Internet.bat`: arranca el panel y abre un túnel temporal
+(`https://…trycloudflare.com`) sin cuentas ni tokens. Sirve mientras este PC esté
+encendido; la URL cambia en cada arranque.
+
 Con el servidor local (`npm run dev`) abre **http://localhost:4321/admin**.
 
 - **Credenciales iniciales:** la cuenta principal es `admin`. Cámbiale la clave en

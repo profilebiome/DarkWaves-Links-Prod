@@ -11,6 +11,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { makeRecord, verifyRecord } from './shared/password-record.mjs';
@@ -18,6 +19,94 @@ import { publishAccounts } from './tools/publish-auth.mjs';
 import { buildManifest } from './tools/build-manifest.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
+
+/* ------------------------------------------------------------------ */
+/* Publicar los cambios del panel en GitHub (sin tokens en el navegador) */
+/* ------------------------------------------------------------------ */
+
+/*
+ * El panel escribe en music/ y shared/. Cuando algo cambia, el servidor hace
+ * `git add` + `commit` + `push` con las credenciales que ya tiene tu PC
+ * (Git Credential Manager). Así el sitio de GitHub Pages se actualiza solo y el
+ * navegador nunca necesita un token.
+ *
+ * Se desactiva con DARKWAVES_PUSH=0 y se puede forzar un push manual con
+ * POST /api/admin/publish.
+ */
+const PUSH_ENABLED = process.env.DARKWAVES_PUSH !== '0';
+let syncTimer = null;
+let syncBusy = false;
+let syncMessage = '';
+let lastSync = { at: 0, ok: null, message: '' };
+let gitIdentity = null;
+
+/** Nombre y correo para los commits: los de tu git o los de la cuenta del repo. */
+async function resolveIdentity() {
+  if (gitIdentity) return gitIdentity;
+  const name = (await runGit(['config', '--get', 'user.name'])).stdout.trim();
+  const email = (await runGit(['config', '--get', 'user.email'])).stdout.trim();
+  gitIdentity = {
+    name: name || process.env.DARKWAVES_GIT_NAME || 'profilebiome',
+    email: email || process.env.DARKWAVES_GIT_EMAIL || 'profilebiome@users.noreply.github.com',
+  };
+  return gitIdentity;
+}
+
+function runGit(args) {
+  return new Promise((resolve) => {
+    const child = spawn('git', args, { cwd: ROOT });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.on('error', (error) => resolve({ code: -1, stdout, stderr: error.message }));
+    child.on('close', (code) => resolve({ code, stdout, stderr }));
+  });
+}
+
+function queueSync(message) {
+  if (!PUSH_ENABLED) return;
+  syncMessage = message || 'Panel: actualizar el sitio';
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => { runSync(); }, 1200);
+}
+
+async function runSync() {
+  if (syncBusy) {
+    queueSync(syncMessage);
+    return;
+  }
+  syncBusy = true;
+  const message = syncMessage || 'Panel: actualizar el sitio';
+  try {
+    const add = await runGit(['add', '-A', 'music', 'shared']);
+    if (add.code !== 0) throw new Error(add.stderr.trim() || 'git add fallo');
+
+    const who = await resolveIdentity();
+    const commit = await runGit([
+      '-c', `user.name=${who.name}`,
+      '-c', `user.email=${who.email}`,
+      'commit', '-m', message,
+    ]);
+    if (commit.code !== 0) {
+      const nothing = /nothing to commit|no changes added/i.test(commit.stdout + commit.stderr);
+      lastSync = { at: Date.now(), ok: nothing ? true : false, message: nothing ? 'Sin cambios pendientes' : commit.stderr.trim() };
+      if (!nothing) throw new Error(commit.stderr.trim() || 'git commit fallo');
+      return;
+    }
+
+    const push = await runGit(['push', 'origin', 'HEAD']);
+    if (push.code !== 0) throw new Error(push.stderr.trim() || 'git push fallo');
+
+    lastSync = { at: Date.now(), ok: true, message };
+    console.log(`  ↳ Publicado en GitHub: ${message}`);
+  } catch (error) {
+    lastSync = { at: Date.now(), ok: false, message: error.message };
+    console.warn(`  ↳ No se pudo publicar en GitHub: ${error.message}`);
+  } finally {
+    syncBusy = false;
+  }
+}
 const BUNDLED_MUSIC_DIR = path.join(ROOT, 'music');
 /* En un host con disco persistente, music/ y data/ se montan fuera del repo. */
 const MUSIC_DIR = path.resolve(process.env.DARKWAVES_MUSIC_DIR || BUNDLED_MUSIC_DIR);
@@ -232,6 +321,7 @@ function saveUsers() {
   } catch (error) {
     console.warn(`  No se pudo publicar shared/accounts.json: ${error.message}`);
   }
+  queueSync('Panel: cuentas del panel');
 }
 
 const isOwner = (name) => Boolean(users[name] && users[name].owner);
@@ -425,6 +515,7 @@ function saveMeta() {
   } catch (error) {
     console.warn(`  No se pudo regenerar music/tracks.json: ${error.message}`);
   }
+  queueSync('Panel: pistas y claves');
 }
 
 function fileTracks() {
@@ -901,6 +992,23 @@ async function handleApi(req, res, pathname) {
       authenticated: true,
       user: session.user,
       owner: isOwner(session.user),
+    });
+  }
+
+  /* Estado y publicación manual en GitHub (para el sitio publicado). */
+  if (pathname === '/api/admin/publish' && (method === 'GET' || method === 'POST')) {
+    const session = sessionFor(req);
+    if (!session) return sendJSON(res, 401, { authenticated: false });
+    if (method === 'POST') {
+      if (!sameOrigin(req)) return sendJSON(res, 403, { error: 'Origen no permitido' });
+      clearTimeout(syncTimer);
+      await runSync();
+    }
+    return sendJSON(res, 200, {
+      enabled: PUSH_ENABLED,
+      ok: lastSync.ok,
+      message: lastSync.message,
+      at: lastSync.at ? new Date(lastSync.at).toISOString() : null,
     });
   }
 
