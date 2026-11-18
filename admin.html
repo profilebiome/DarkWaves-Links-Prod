@@ -395,8 +395,9 @@
     <h1>Panel de administración</h1>
     <p class="sub">Acceso privado para subir música, editar sus datos y asignar la contraseña de cada pista.</p>
     <div class="notice" id="server-note" hidden>
-      No se pudo contactar con el servidor. Este panel solo funciona con <code>npm run dev</code>
-      (no en GitHub Pages).
+      No se pudo contactar con el servidor del panel. Si estás en GitHub Pages, abre el panel
+      completo en tu PC con <code>Iniciar-Panel.bat</code> (o <code>npm run dev</code>) y entra en
+      <code>http://localhost:4321/admin</code>.
     </div>
     <div class="card">
       <div class="card-head"><span class="bar"></span><h2>Iniciar sesión</h2></div>
@@ -419,9 +420,12 @@
     <p class="sub">Sube pistas a <code>music/</code>, define título, artista, álbum y todos sus datos, y protege cada track con su propia contraseña.</p>
 
     <div class="notice" id="static-note" hidden>
-      Modo estático (GitHub Pages): has entrado con tu cuenta, pero aquí la biblioteca es
-      <strong>solo lectura</strong>. Para subir, editar o gestionar usuarios abre el panel con el
-      servidor: <code>npm run dev</code> o el host con Node (ver <code>DESPLIEGUE.md</code>).
+      Estás en el sitio publicado (GitHub Pages), así que la biblioteca se muestra en
+      <strong>solo lectura</strong>: Pages entrega archivos y no puede guardar música ni usuarios.
+      Para subir pistas, editar sus datos, poner claves o crear usuarios, abre el panel completo
+      en tu PC con <code>Iniciar-Panel.bat</code> →
+      <a href="http://localhost:4321/admin">http://localhost:4321/admin</a>.
+      Lo que guardes ahí se publica solo en GitHub y este sitio se actualiza en ~1 minuto.
     </div>
 
     <div class="card" id="upload-card">
