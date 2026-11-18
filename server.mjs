@@ -95,7 +95,13 @@ async function runSync() {
       return;
     }
 
-    const push = await runGit(['push', 'origin', 'HEAD']);
+    // En el host no hay credenciales de git: se usa el token de una variable de
+    // entorno (secreto del servidor, nunca del navegador).
+    const gitToken = process.env.DARKWAVES_GITHUB_TOKEN || '';
+    const auth = gitToken
+      ? ['-c', `http.extraheader=AUTHORIZATION: basic ${Buffer.from(`x-access-token:${gitToken}`).toString('base64')}`]
+      : [];
+    const push = await runGit([...auth, 'push', 'origin', 'HEAD:main']);
     if (push.code !== 0) throw new Error(push.stderr.trim() || 'git push fallo');
 
     lastSync = { at: Date.now(), ok: true, message };
@@ -323,9 +329,38 @@ const normalizeUser = (value) => String(value || '').trim().toLowerCase();
  * La primera cuenta es la principal (owner): crea y borra al resto.
  * Todas pueden subir música, editar pistas y asignar contraseñas.
  */
+/* Recupera las cuentas publicadas en shared/accounts.json (host sin disco). */
+function importPublicUsers() {
+  const data = readJSONFile(path.join(PUBLIC_DIR, 'shared', 'accounts.json'), null);
+  if (!data || !data.users) return null;
+  const users = {};
+  for (const [name, record] of Object.entries(data.users)) {
+    if (!record || !record.salt || !record.hash) continue;
+    users[name] = {
+      pbkdf2: {
+        salt: record.salt,
+        iterations: Number(record.iterations) || 210000,
+        hash: record.hash,
+      },
+      ...(record.owner ? { owner: true } : {}),
+      createdAt: new Date().toISOString(),
+    };
+  }
+  return Object.keys(users).length ? users : null;
+}
+
 function loadUsers() {
   const stored = readJSONFile(USERS_FILE, null);
   if (stored && stored.users && Object.keys(stored.users).length) return stored.users;
+
+  // Sin data/ local (host sin disco): se recuperan las cuentas publicadas en
+  // shared/accounts.json para que un reinicio no borre a los administradores.
+  const imported = importPublicUsers();
+  if (imported) {
+    writeJSONFile(USERS_FILE, { version: 1, users: imported });
+    console.log(`  Cuentas recuperadas de shared/accounts.json: ${Object.keys(imported).join(', ')}`);
+    return imported;
+  }
 
   // Migración desde la cuenta única anterior (data/admin.json).
   const legacy = readJSONFile(ADMIN_FILE, null);
@@ -551,7 +586,27 @@ let metaCache = null;
 
 function metaStore() {
   if (metaCache) return metaCache;
-  const data = readJSONFile(META_FILE, null);
+  let data = readJSONFile(META_FILE, null);
+
+  // Sin data/ (host sin disco): se recupera de music/tracks.json para no perder
+  // las claves de las pistas que ya están publicadas.
+  if (!data) {
+    const published = readJSONFile(path.join(MUSIC_DIR, 'tracks.json'), null);
+    if (published && Array.isArray(published.tracks)) {
+      const tracks = {};
+      for (const item of published.tracks) {
+        if (!item || !item.file) continue;
+        const record = { title: item.title, artist: item.artist, addedAt: new Date().toISOString() };
+        for (const field of ['album', 'genre', 'year', 'description']) {
+          if (item[field]) record[field] = item[field];
+        }
+        if (item.key && item.key.salt) record.password = { pbkdf2: item.key };
+        tracks[item.file] = record;
+      }
+      if (Object.keys(tracks).length) data = { version: 1, tracks };
+    }
+  }
+
   metaCache = { version: 1, tracks: (data && data.tracks) || {} };
   return metaCache;
 }

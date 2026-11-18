@@ -38,6 +38,18 @@ export function publishAccounts() {
     out.users[name] = { ...key, owner: Boolean(record.owner) };
   }
 
+  // Nunca publicar un archivo vacío: dejaría el login del sitio sin cuentas.
+  const count = Object.keys(out.users).length;
+  if (!count) {
+    const existing = fs.existsSync(OUTPUT) ? JSON.parse(fs.readFileSync(OUTPUT, 'utf8')) : null;
+    const kept = existing && existing.users ? Object.keys(existing.users).length : 0;
+    console.warn(
+      `  AVISO: no hay cuentas que publicar (cuentas leídas: ${Object.keys(users).length}).` +
+        (kept ? ` Se conserva shared/accounts.json con ${kept} cuenta(s).` : '')
+    );
+    return existing || out;
+  }
+
   fs.mkdirSync(path.dirname(OUTPUT), { recursive: true });
   fs.writeFileSync(OUTPUT, `${JSON.stringify(out, null, 2)}\n`, 'utf8');
 

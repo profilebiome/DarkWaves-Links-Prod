@@ -32,10 +32,29 @@ export function makeRecord(password) {
 }
 
 export function verifyRecord(password, record) {
-  if (!record || !record.salt || !record.hash) return false;
-  const hash = crypto.scryptSync(password, record.salt, 64);
-  const stored = Buffer.from(record.hash, 'hex');
-  return hash.length === stored.length && crypto.timingSafeEqual(hash, stored);
+  if (!record) return false;
+  // Registros scrypt del servidor.
+  if (record.salt && record.hash && record.hash.length >= 64 && !record.pbkdf2) {
+    const hash = crypto.scryptSync(password, record.salt, 64);
+    const stored = Buffer.from(record.hash, 'hex');
+    return hash.length === stored.length && crypto.timingSafeEqual(hash, stored);
+  }
+  // Registros PBKDF2 (los que se publican en el repo).
+  const key = record.pbkdf2 && record.pbkdf2.salt ? record.pbkdf2 : record.k && record.k.salt ? record.k : record;
+  if (key && key.salt && key.hash && Number(key.iterations)) {
+    const attempt = crypto
+      .pbkdf2Sync(password, key.salt, Number(key.iterations), 32, 'sha256')
+      .toString('hex');
+    if (attempt.length !== key.hash.length) return false;
+    return crypto.timingSafeEqual(Buffer.from(attempt), Buffer.from(key.hash));
+  }
+  // Registro scrypt antiguo sin pbkdf2.
+  if (record.salt && record.hash) {
+    const hash = crypto.scryptSync(password, record.salt, 64);
+    const stored = Buffer.from(record.hash, 'hex');
+    return hash.length === stored.length && crypto.timingSafeEqual(hash, stored);
+  }
+  return false;
 }
 
 /** Solo el bloque verificable en el navegador (nunca el scrypt). */
