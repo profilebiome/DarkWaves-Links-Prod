@@ -437,7 +437,7 @@
         El token queda guardado solo en este navegador: cada administrador pega el suyo
         (o el mismo) una vez en su propio equipo.
       </p>
-      <div class="grid">
+      <div class="grid" id="gh-fields">
         <label class="wide"><span>Token</span><input id="gh-token" type="password" autocomplete="off" placeholder="github_pat_…"></label>
         <label><span>Propietario</span><input id="gh-owner" type="text" autocomplete="off" spellcheck="false"></label>
         <label><span>Repositorio</span><input id="gh-repo" type="text" autocomplete="off" spellcheck="false"></label>
@@ -445,6 +445,7 @@
       </div>
       <div class="actions">
         <button class="primary" type="button" id="gh-connect">Conectar repositorio</button>
+        <button class="ghost" type="button" id="gh-change" hidden>Cambiar token</button>
         <button class="ghost" type="button" id="gh-disconnect" hidden>Desconectar</button>
         <span class="status" id="gh-status"></span>
       </div>
@@ -609,6 +610,8 @@
     uploadCard: $("#upload-card"),
     passCard: $("#pass-card"),
     ghCard: $("#gh-card"),
+    ghFields: $("#gh-fields"),
+    ghChange: $("#gh-change"),
     ghToken: $("#gh-token"),
     ghOwner: $("#gh-owner"),
     ghRepo: $("#gh-repo"),
@@ -653,7 +656,7 @@
     userPassStatus: $("#user-pass-status"),
   };
 
-  const state = { tracks: [], editing: null, owner: false, me: "", static: false };
+  const state = { tracks: [], editing: null, owner: false, me: "", static: false, ghEditing: false };
   let sessionChecked = false;
 
   async function api(url, options = {}) {
@@ -720,6 +723,7 @@
     state.owner = Boolean(owner);
     paintGithub();
     applyPermissions();
+    autoConnect();
   }
 
   function showLogin() {
@@ -902,9 +906,31 @@
     el.ghBranch.value = shown.branch;
     el.ghToken.value = "";
     el.ghToken.placeholder = cfg ? "conectado · pega otro token para cambiarlo" : "github_pat_…";
-    el.ghState.textContent = cfg ? `${cfg.owner}/${cfg.repo}` : "sin conectar";
-    el.ghDisconnect.hidden = !cfg;
+
+    // Con token configurado (del sitio o de este navegador) no se piden datos.
+    const configured = Boolean(cfg) && !state.ghEditing;
+    el.ghFields.hidden = configured;
+    el.ghConnect.hidden = configured;
+    el.ghChange.hidden = !cfg || state.ghEditing;
+    el.ghDisconnect.hidden = !cfg || Boolean(cfg && cfg.shared) || state.ghEditing;
+
+    if (cfg && cfg.shared) el.ghState.textContent = "token del sitio";
+    else if (cfg) el.ghState.textContent = `${cfg.owner}/${cfg.repo}`;
+    else el.ghState.textContent = "sin conectar";
+
     return cfg;
+  }
+
+  /** Al entrar, usa el token guardado y deja el panel listo sin pedir nada. */
+  async function autoConnect() {
+    if (!state.static) return;
+    const cfg = paintGithub();
+    applyPermissions();
+    if (!cfg) {
+      setStatus(el.ghStatus, "Pega el token una vez para administrar desde aquí", "");
+      return;
+    }
+    setStatus(el.ghStatus, cfg.shared ? "Token del sitio activo" : "Token guardado en este navegador", "ok");
   }
 
   el.ghConnect.addEventListener("click", async () => {
@@ -930,6 +956,7 @@
       }
 
       setStatus(el.ghStatus, `Conectado a ${repo.full_name || `${cfg.owner}/${cfg.repo}`} · puede escribir`, "ok");
+      state.ghEditing = false;
       paintGithub();
       applyPermissions();
       await loadTracks();
@@ -942,8 +969,18 @@
     }
   });
 
+  el.ghChange.addEventListener("click", () => {
+    state.ghEditing = true;
+    clearConfig();
+    paintGithub();
+    applyPermissions();
+    setStatus(el.ghStatus, "Pega un token distinto para este navegador", "");
+    el.ghToken.focus();
+  });
+
   el.ghDisconnect.addEventListener("click", () => {
     clearConfig();
+    state.ghEditing = false;
     setStatus(el.ghStatus, "Desconectado", "");
     paintGithub();
     applyPermissions();
@@ -1002,7 +1039,7 @@
       await uploadWithProgress(formData, (ratio) => {
         el.uploadProgress.firstElementChild.style.width = `${Math.round(ratio * 100)}%`;
       });
-      setStatus(el.uploadStatus, "Pista subida correctamente", "ok");
+      setStatus(el.uploadStatus, "Pista subida correctamente · la web se actualiza en ~1 minuto", "ok");
       el.uploadForm.reset();
       await loadTracks();
     } catch (error) {
@@ -1059,7 +1096,7 @@
       });
       el.editDialog.close();
       await loadTracks();
-      setStatus(el.listStatus, "Cambios guardados", "ok");
+      setStatus(el.listStatus, "Cambios guardados · la web se actualiza en ~1 minuto", "ok");
     } catch (error) {
       setStatus(el.editStatus, error.message, "error");
     }

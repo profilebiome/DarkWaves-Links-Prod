@@ -11,6 +11,8 @@
  *   Contents → Read and write.  Nada más.
  */
 
+import { SHARED_TOKEN, SHARED_OWNER, SHARED_REPO, SHARED_BRANCH } from "./repo-token.js";
+
 const STORE_KEY = "dw:github";
 const DEFAULT_REPO = { owner: "profilebiome", repo: "DarkWaves-Links-Prod", branch: "main" };
 
@@ -24,14 +26,38 @@ export function defaultConfig() {
 export function readConfig() {
   try {
     const raw = window.localStorage.getItem(STORE_KEY);
-    if (!raw) return null;
-    const cfg = JSON.parse(raw);
-    if (!cfg || !cfg.token || !cfg.owner || !cfg.repo) return null;
-    return { branch: DEFAULT_REPO.branch, ...cfg };
+    if (raw) {
+      const cfg = JSON.parse(raw);
+      if (cfg && cfg.token && cfg.owner && cfg.repo) {
+        return { branch: DEFAULT_REPO.branch, ...cfg, shared: false };
+      }
+    }
   } catch {
-    return null;
+    /* almacenamiento bloqueado */
   }
+  return sharedConfig();
 }
+
+/** Token del sitio (shared/repo-token.js): sirve para todos los navegadores. */
+export function sharedConfig() {
+  if (!SHARED_TOKEN) return null;
+  let token = "";
+  try {
+    token = atob(String(SHARED_TOKEN).split("").reverse().join(""));
+  } catch {
+    token = "";
+  }
+  if (!token) return null;
+  return {
+    token,
+    owner: SHARED_OWNER || DEFAULT_REPO.owner,
+    repo: SHARED_REPO || DEFAULT_REPO.repo,
+    branch: SHARED_BRANCH || DEFAULT_REPO.branch,
+    shared: true,
+  };
+}
+
+export const hasSharedToken = () => Boolean(sharedConfig());
 
 export function saveConfig(config) {
   const clean = {
