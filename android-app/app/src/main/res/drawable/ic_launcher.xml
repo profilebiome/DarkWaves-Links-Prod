@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icono de DarkWaves: lista de reproducción en azul sobre fondo marino. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- fondo redondeado -->
+    <path
+        android:fillColor="#0A1830"
+        android:pathData="M20,0h68a20,20 0 0 1 20,20v68a20,20 0 0 1 -20,20h-68a20,20 0 0 1 -20,-20v-68a20,20 0 0 1 20,-20z" />
+
+    <!-- brillo azul -->
+    <path
+        android:fillColor="#12305C"
+        android:pathData="M20,0h68a20,20 0 0 1 20,20v26h-108v-26a20,20 0 0 1 20,-20z" />
+
+    <!-- botón de play -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M58,16l24,13l-24,13z" />
+
+    <!-- viñetas -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M20,52a5,5 0 1 0 0.01,0z" />
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M20,70a5,5 0 1 0 0.01,0z" />
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M20,88a5,5 0 1 0 0.01,0z" />
+
+    <!-- líneas de la lista -->
+    <path
+        android:fillColor="#E8F0FF"
+        android:pathData="M34,47h52a3,3 0 0 1 0,6h-52a3,3 0 0 1 0,-6z" />
+    <path
+        android:fillColor="#E8F0FF"
+        android:pathData="M34,65h42a3,3 0 0 1 0,6h-42a3,3 0 0 1 0,-6z" />
+    <path
+        android:fillColor="#9CC0FF"
+        android:pathData="M34,83h30a3,3 0 0 1 0,6h-30a3,3 0 0 1 0,-6z" />
+</vector>

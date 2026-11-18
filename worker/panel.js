@@ -240,6 +240,62 @@ function safeFileName(name) {
   return `${stem}${ext}`;
 }
 
+/* ------------------------------------------------------------------ */
+/* Audio: se sube como asset de un Release (streaming, sin base64)     */
+/* ------------------------------------------------------------------ */
+
+const RELEASE_TAG = 'audio';
+
+async function ensureRelease(env) {
+  try {
+    const existing = await gh(env, repoUrl(env, `/releases/tags/${RELEASE_TAG}`));
+    if (existing && existing.id) return existing;
+  } catch (error) {
+    if (error.status !== 404) throw error;
+  }
+  return gh(env, repoUrl(env, '/releases'), {
+    method: 'POST',
+    body: JSON.stringify({
+      tag_name: RELEASE_TAG,
+      name: 'Audio del panel',
+      body: 'Pistas subidas desde el panel. No borrar este release.',
+    }),
+  });
+}
+
+async function uploadAsset(env, releaseId, fileName, body, contentType, contentLength) {
+  const repo = env.REPO || 'profilebiome/DarkWaves-Links-Prod';
+  const headers = {
+    Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'darkwaves-panel',
+    'Content-Type': contentType || 'audio/mpeg',
+  };
+  if (contentLength) headers['Content-Length'] = String(contentLength);
+  const response = await fetch(
+    `https://uploads.github.com/repos/${repo}/releases/${releaseId}/assets?name=${encodeURIComponent(fileName)}`,
+    { method: 'POST', headers, body, duplex: 'half' }
+  );
+  const text = await response.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
+  if (!response.ok) {
+    const message = data && data.message ? data.message : `${response.status}`;
+    throw new Error(`GitHub ${response.status}: ${message}`);
+  }
+  return data;
+}
+
+const AUDIO_TYPE = {
+  mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg',
+  m4a: 'audio/mp4', aac: 'audio/aac', flac: 'audio/flac', opus: 'audio/ogg', webm: 'audio/webm',
+};
+
 async function publicTracks(env) {
   const { json: data } = await readJSON(env, TRACKS_PATH);
   const list = data && Array.isArray(data.tracks) ? data.tracks : [];
@@ -305,13 +361,15 @@ export default {
       }
 
       if (pathname === '/api/admin/tracks' && request.method === 'POST') {
-        const form = await request.formData();
-        const file = form.get('file');
-        if (!file || typeof file === 'string') return json({ error: 'Falta el archivo de audio' }, 400, headers);
-        const name = safeFileName(file.name);
+        const params = url.searchParams;
+        const name = safeFileName(params.get('name') || '');
         if (!name) return json({ error: 'Formato de audio no admitido' }, 400, headers);
-        const password = String(form.get('password') || '');
+        const password = String(params.get('password') || '');
         if (password.length < 4) return json({ error: 'La contraseña de la pista necesita al menos 4 caracteres' }, 400, headers);
+
+        const length = Number(request.headers.get('content-length') || 0);
+        if (length > 95 * 1024 * 1024) return json({ error: 'El archivo supera 95 MB' }, 413, headers);
+        if (!request.body) return json({ error: 'Falta el archivo de audio' }, 400, headers);
 
         const { list } = await publicTracks(env);
         let finalName = name;
@@ -321,30 +379,33 @@ export default {
           counter += 1;
         }
 
-        const buffer = await file.arrayBuffer();
-        await gh(env, repoUrl(env, `/contents/${MUSIC_DIR}/${encodeURIComponent(finalName)}`), {
-          method: 'PUT',
-          body: JSON.stringify({
-            message: `Subir pista: ${finalName}`,
-            content: bytesToBase64(buffer),
-            branch: env.BRANCH || 'main',
-          }),
-        });
+        const ext = (finalName.match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase();
+        const release = await ensureRelease(env);
+        const asset = await uploadAsset(
+          env,
+          release.id,
+          finalName,
+          request.body,
+          AUDIO_TYPE[ext] || 'application/octet-stream',
+          length
+        );
 
         const stem = finalName.replace(/\.[a-z0-9]+$/i, '');
         const entry = {
           file: finalName,
-          title: String(form.get('title') || '').trim() || stem,
-          artist: String(form.get('artist') || '').trim() || 'Artista desconocido',
-          ext: (finalName.match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase(),
+          title: String(params.get('title') || '').trim() || stem,
+          artist: String(params.get('artist') || '').trim() || 'Artista desconocido',
+          ext,
+          url: asset.browser_download_url,
+          assetId: asset.id,
           key: await makePassword(password),
           locked: true,
         };
         for (const field of ['album', 'genre', 'year', 'description']) {
-          const value = String(form.get(field) || '').trim();
+          const value = String(params.get(field) || '').trim();
           if (value) entry[field] = value;
         }
-        await saveTracks(env, [...list, entry], `Metadatos: ${finalName}`);
+        await saveTracks(env, [...list, entry], `Subir pista: ${finalName}`);
         return json({ ok: true, track: entry }, 200, headers);
       }
 
@@ -387,6 +448,14 @@ export default {
 
         if (request.method === 'DELETE') {
           const file = list[index].file;
+          const assetId = list[index].assetId;
+          if (assetId) {
+            try {
+              await gh(env, repoUrl(env, `/releases/assets/${assetId}`), { method: 'DELETE' });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+          }
           try {
             const current = await gh(env, contentsUrl(env, `${MUSIC_DIR}/${file}`));
             await gh(env, repoUrl(env, `/contents/${MUSIC_DIR}/${encodeURIComponent(file)}`), {

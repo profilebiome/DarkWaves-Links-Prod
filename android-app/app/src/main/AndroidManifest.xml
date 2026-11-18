@@ -5,6 +5,8 @@
 
     <application
         android:label="DarkWaves"
+        android:icon="@drawable/ic_launcher"
+        android:roundIcon="@drawable/ic_launcher"
         android:hardwareAccelerated="true"
         android:usesCleartextTraffic="false"
         android:supportsRtl="true"
