@@ -11,3 +11,5 @@ Thumbs.db
 
 # Archivos temporales de pruebas
 .tmp-*
+.render-deploy.json
+cloudflared.exe
