@@ -38,6 +38,20 @@
         "hash": "23809d0d4947b9c82be00f8bcb12c3927be2bbef938789eef8ab16cb41b3bf2d"
       },
       "locked": true
+    },
+    {
+      "file": "PruebaWav.wav",
+      "title": "PruebaWav",
+      "artist": "Test",
+      "ext": "wav",
+      "url": "https://darkwaves-panel.profilebio-me.workers.dev/audio/PruebaWav.wav",
+      "assetId": 764154582,
+      "key": {
+        "salt": "b375ecab05c2ed6aef0f44380d2375da",
+        "iterations": 100000,
+        "hash": "83e0bc1dfb55563785f98de422725f2e1eeae29306fd3bb0fc7a93eab1590941"
+      },
+      "locked": true
     }
   ]
 }
