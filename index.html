@@ -597,6 +597,14 @@
   .al-head button { color: var(--dim); font-size: 13px; }
   .al-head button:hover { color: #fff; }
   dialog.admin-login input { margin-bottom: 9px; }
+  dialog.admin-login .al-hint {
+    margin: 0 0 12px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    line-height: 1.7;
+    letter-spacing: 0.06em;
+    color: var(--faint);
+  }
   dialog.admin-login .al-status {
     min-height: 14px;
     margin: 2px 0 10px;
@@ -774,13 +782,14 @@
 <dialog class="admin-login" id="admin-login">
   <form id="admin-login-form" autocomplete="off">
     <div class="al-head">
-      <span>Acceso administrador</span>
+      <span>Entrar a DarkWaves</span>
       <button type="button" id="admin-login-close" aria-label="Cerrar">✕</button>
     </div>
     <input id="admin-user" type="text" placeholder="Usuario" autocomplete="username" required>
     <input id="admin-pass" type="password" placeholder="Contraseña" autocomplete="current-password" required>
     <p class="al-status" id="admin-login-status"></p>
-    <button class="al-submit" type="submit">Entrar al panel</button>
+    <button class="al-submit" type="submit">Entrar</button>
+    <p class="al-hint">Con esta sesión entras al panel y escuchas la playlist sin volver a escribir claves.</p>
   </form>
 </dialog>
 
@@ -789,6 +798,7 @@
     Player, mountIcons, icons, formatTime, artFor, initialsOf, hotkeys, escapeHtml,
   } from "/shared/player.js?v=20261118c";
   import { protectMedia } from "/shared/protect.js?v=20261118c";
+  import { PANEL_ENDPOINT } from "/shared/api-endpoint.js?v=20261118c";
   import {
     staticLogin, staticUnlockTrack, applyStaticGrants,
   } from "/shared/static-auth.js?v=20261118c";
@@ -1097,13 +1107,16 @@
   player.addEventListener("tracks", async (event) => {
     const tracks = event.detail && event.detail.tracks ? event.detail.tracks : [];
     const changed = await applyStaticGrants(tracks);
-    if (!changed) return;
-    for (const track of tracks) {
-      if (!track.locked && !track.url) {
-        track.url = `music/${encodeURIComponent(track.file || track.id)}`;
+    if (changed) {
+      for (const track of tracks) {
+        if (!track.locked && !track.url) {
+          track.url = `music/${encodeURIComponent(track.file || track.id)}`;
+        }
       }
+      render();
     }
-    render();
+    // Una sola sesión: con sesión iniciada la playlist queda abierta.
+    await applySession();
   });
 
   /* Si el enlace firmado caduca o el archivo cambia, se renueva solo una vez. */
@@ -1136,6 +1149,68 @@
   });
 
   /* ---------- acceso de administrador en la esquina ---------- */
+  /* ---------------- sesión única (panel + playlist) ---------------- */
+  const REMOTE = (PANEL_ENDPOINT || "").replace(/\/+$/, "");
+  const CRED_KEY = "dw:worker-cred";
+
+  function readCred() {
+    try {
+      const raw = sessionStorage.getItem(CRED_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function saveCred(cred) {
+    try {
+      if (cred) sessionStorage.setItem(CRED_KEY, JSON.stringify(cred));
+      else sessionStorage.removeItem(CRED_KEY);
+    } catch {
+      /* almacenamiento bloqueado */
+    }
+  }
+
+  const basicAuth = (cred) => `Basic ${btoa(`${cred.user}:${cred.password}`)}`;
+
+  async function sessionUser() {
+    if (!REMOTE) return null;
+    const cred = readCred();
+    if (!cred) return null;
+    try {
+      const response = await fetch(`${REMOTE}/api/admin/session`, {
+        headers: { Authorization: basicAuth(cred) },
+        cache: "no-store",
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.user || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Con sesión iniciada, el usuario escucha sin pedir la clave de cada pista. */
+  async function applySession() {
+    const user = await sessionUser();
+    if (!user) return;
+    let changed = false;
+    for (const track of player.tracks) {
+      if (!track.locked) continue;
+      track.locked = false;
+      if (!track.url && (track.file || track.id)) {
+        track.url = `music/${encodeURIComponent(track.file || track.id)}`;
+      }
+      changed = true;
+    }
+    if (changed) render();
+    const button = $("#admin-open");
+    if (button) {
+      button.textContent = user;
+      button.title = `Sesión de ${user} — pulsa para abrir el panel`;
+    }
+  }
+
   const adminUi = {
     open: $("#admin-open"),
     dialog: $("#admin-login"),
@@ -1146,8 +1221,13 @@
     status: $("#admin-login-status"),
   };
 
-  adminUi.open.addEventListener("click", () => {
+  adminUi.open.addEventListener("click", async () => {
     adminUi.status.textContent = "";
+    const user = await sessionUser();
+    if (user) {
+      window.location.href = "/admin";
+      return;
+    }
     if (!adminUi.dialog.open) adminUi.dialog.showModal();
     adminUi.user.focus();
   });
@@ -1158,6 +1238,22 @@
     event.preventDefault();
     adminUi.status.textContent = "Comprobando…";
     try {
+      // Con el Worker: una sola sesión vale para el panel y para la playlist.
+      if (REMOTE) {
+        const cred = { user: adminUi.user.value.trim(), password: adminUi.pass.value };
+        const verify = await fetch(`${REMOTE}/api/admin/session`, {
+          headers: { Authorization: basicAuth(cred) },
+          cache: "no-store",
+        });
+        if (!verify.ok) throw new Error("Usuario o contraseña incorrectos");
+        const data = await verify.json();
+        saveCred(cred);
+        adminUi.pass.value = "";
+        adminUi.dialog.close();
+        await applySession();
+        adminUi.status.textContent = `Sesión iniciada como ${data.user}`;
+        return;
+      }
       const response = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

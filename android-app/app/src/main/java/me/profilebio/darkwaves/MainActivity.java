@@ -17,8 +17,8 @@ import android.webkit.WebViewClient;
  *
  * 1. FLAG_SECURE: el SISTEMA OPERATIVO pone la ventana en negro en cualquier
  *    captura o grabación de pantalla (igual que Telegram en chats secretos).
- * 2. Selector de archivos: sin onShowFileChooser, el <input type="file"> del
- *    panel no abre nada y por eso no se podía subir música desde la app.
+ * 2. Selector de archivos (onShowFileChooser) para poder subir música desde el
+ *    panel dentro de la app.
  */
 public class MainActivity extends Activity {
 
@@ -45,6 +45,7 @@ public class MainActivity extends Activity {
         WebSettings settings = web.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
@@ -52,6 +53,7 @@ public class MainActivity extends Activity {
         settings.setBuiltInZoomControls(false);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
         web.setWebViewClient(new WebViewClient());
 
@@ -67,14 +69,33 @@ public class MainActivity extends Activity {
                     fileCallback = null;
                 }
                 fileCallback = callback;
+
                 try {
-                    Intent intent = params.createIntent();
+                    // Selector de audio hecho a mano: es lo que funciona en
+                    // todos los Android (params.createIntent() falla en varios).
+                    Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
-                    startActivityForResult(intent, REQUEST_FILE);
+                    intent.setType("audio/*");
+                    if (params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE) {
+                        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                    }
+                    if (intent.resolveActivity(getPackageManager()) == null) {
+                        intent.setType("*/*");
+                    }
+                    startActivityForResult(Intent.createChooser(intent, "Elige el audio"), REQUEST_FILE);
                     return true;
                 } catch (Exception error) {
-                    fileCallback = null;
-                    return false;
+                    // Si el móvil no tiene selector de audio, se abre uno genérico.
+                    try {
+                        Intent fallback = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                        fallback.addCategory(Intent.CATEGORY_OPENABLE);
+                        fallback.setType("*/*");
+                        startActivityForResult(fallback, REQUEST_FILE);
+                        return true;
+                    } catch (Exception ignored) {
+                        fileCallback = null;
+                        return false;
+                    }
                 }
             }
         });
@@ -88,7 +109,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Resultado del selector de archivos: se lo devolvemos al panel. */
+    /** Resultado del selector: se lo devolvemos al panel para que suba la pista. */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_FILE) {
