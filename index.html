@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DrakoTheProducer Player</title>
+<title>Darkwaves Link Pro</title>
 <meta name="description" content="DrakoTheProducer Player: reproductor musical en streaming.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237dd3fc' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M9 18V6.4l10-2v11.2'/%3E%3Ccircle cx='6.5' cy='18' r='2.5'/%3E%3Ccircle cx='16.5' cy='15.6' r='2.5'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/shared/base.css?v=20261118c">
@@ -65,6 +65,44 @@
     font-weight: 700;
   }
   .logo svg { width: 18px; height: 18px; color: var(--blue-soft); }
+
+  /* Marca: onda + DARKWAVES / LINK PRO */
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .brand svg { width: 42px; height: 22px; color: #F2F6FF; flex: none; }
+  .brand .brand-text { display: flex; flex-direction: column; gap: 3px; line-height: 1; }
+  .brand .brand-name {
+    font-family: var(--sans, Inter, system-ui, sans-serif);
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 0.14em;
+    color: #F2F6FF;
+    text-transform: uppercase;
+  }
+  .brand .brand-sub {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--mono);
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    color: #A9B8D4;
+    text-transform: uppercase;
+  }
+  .brand .brand-pro {
+    border: 1px solid #7C8CA8;
+    border-radius: 3px;
+    padding: 1px 5px 0;
+    font-size: 8px;
+    letter-spacing: 0.18em;
+    color: #E8F0FF;
+  }
   header .sep { color: var(--blue); }
   header nav { margin-left: auto; display: flex; gap: 16px; align-items: center; }
   header .slot {
@@ -683,9 +721,19 @@
 <body>
 <div class="shell">
   <header>
-    <span class="logo"><span data-icon="music"></span>DRAKOTHEPRODUCER</span>
+    <span class="brand" title="Darkwaves Link Pro">
+      <svg viewBox="0 0 60 26" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 13h8l3-9 4 18 4-14 3 9h4" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M32 13h26" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+      </svg>
+      <span class="brand-text">
+        <span class="brand-name">Darkwaves</span>
+        <span class="brand-sub">Link <span class="brand-pro">Pro</span></span>
+      </span>
+    </span>
     <span class="sep">/</span>
-    <span>PLAYER</span>
+    <span>Player</span>
     <nav>
       <span class="slot"><i></i>music/</span>
       <button class="admin-trigger" id="admin-open" type="button" title="Acceso de administrador">
